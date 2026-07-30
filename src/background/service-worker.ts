@@ -14,9 +14,7 @@ interface MessageSenderLike {
 
 interface ChromeRuntimeLike {
   onMessage: {
-    addListener(
-      listener: (message: unknown, sender: MessageSenderLike) => boolean | void,
-    ): void;
+    addListener(listener: (message: unknown, sender: MessageSenderLike) => boolean | void): void;
   };
 }
 
@@ -30,9 +28,7 @@ interface ChromeTabsLike {
 }
 
 interface ChromeDeclarativeNetRequestLike {
-  setExtensionActionOptions(options: {
-    displayActionCountAsBadgeText: boolean;
-  }): Promise<void>;
+  setExtensionActionOptions(options: { displayActionCountAsBadgeText: boolean }): Promise<void>;
 }
 
 interface ChromeApiLike {

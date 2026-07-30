@@ -135,7 +135,10 @@ function parseDiagnostics(value: unknown): StatisticsDiagnostic[] {
   });
 }
 
-function assertDelta(name: 'blockedRequests' | 'hiddenElements', value: number | undefined): number {
+function assertDelta(
+  name: 'blockedRequests' | 'hiddenElements',
+  value: number | undefined,
+): number {
   if (value === undefined) {
     return 0;
   }
