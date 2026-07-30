@@ -1,9 +1,4 @@
-import {
-  FIXTURE_ORIGIN,
-  expect,
-  setSiteMode,
-  test,
-} from './fixtures/extension-context.ts';
+import { FIXTURE_ORIGIN, expect, setSiteMode, test } from './fixtures/extension-context.ts';
 
 test('Strict mode neutralizes a transparent overlay and Off restores it', async ({
   context,

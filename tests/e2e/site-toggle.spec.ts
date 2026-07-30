@@ -1,9 +1,4 @@
-import {
-  FIXTURE_ORIGIN,
-  expect,
-  openActionPopup,
-  test,
-} from './fixtures/extension-context.ts';
+import { FIXTURE_ORIGIN, expect, openActionPopup, test } from './fixtures/extension-context.ts';
 
 test('popup mode controls update cosmetic protection for the active site', async ({
   context,

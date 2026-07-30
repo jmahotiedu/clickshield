@@ -142,9 +142,9 @@ describe('overlay mitigator', () => {
     element.nextSibling = sibling;
     const mitigator = new OverlayMitigator();
 
-    expect(
-      mitigator.mitigate(element, assessment(OVERLAY_REMOVAL_THRESHOLD), 'strict'),
-    ).toBe('removed');
+    expect(mitigator.mitigate(element, assessment(OVERLAY_REMOVAL_THRESHOLD), 'strict')).toBe(
+      'removed',
+    );
     expect(element.removed).toBe(true);
     expect(parent.children).toEqual([sibling]);
 

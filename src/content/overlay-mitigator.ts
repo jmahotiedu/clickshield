@@ -195,7 +195,11 @@ function collectSemanticHints(element: Element): string[] {
   ];
 
   return values
-    .flatMap((value) => String(value).toLowerCase().split(/[^a-z0-9-]+/))
+    .flatMap((value) =>
+      String(value)
+        .toLowerCase()
+        .split(/[^a-z0-9-]+/),
+    )
     .filter((value) => value.length > 0)
     .slice(0, 20);
 }

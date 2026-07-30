@@ -7,9 +7,7 @@ import {
   redactDiagnosticDestination,
 } from '../../src/popup/diagnostics.ts';
 
-function entry(
-  overrides: Partial<PopupDecisionLogEntry> = {},
-): PopupDecisionLogEntry {
+function entry(overrides: Partial<PopupDecisionLogEntry> = {}): PopupDecisionLogEntry {
   return {
     tabId: 20,
     sourceTabId: 10,

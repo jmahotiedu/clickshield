@@ -1,9 +1,4 @@
-import {
-  FIXTURE_ORIGIN,
-  expect,
-  setSiteMode,
-  test,
-} from './fixtures/extension-context.ts';
+import { FIXTURE_ORIGIN, expect, setSiteMode, test } from './fixtures/extension-context.ts';
 
 test.beforeEach(async ({ context, extensionId }) => {
   await setSiteMode(context, extensionId, 'player.clickshield.test', 'strict');
@@ -42,7 +37,9 @@ test('Strict mode closes a known-ad pop-under and restores opener focus', async 
   const popup = await popupCreated;
 
   await expect.poll(() => popup.isClosed()).toBe(true);
-  await expect.poll(() => context.pages().filter((candidate) => !candidate.isClosed()).length).toBe(1);
+  await expect
+    .poll(() => context.pages().filter((candidate) => !candidate.isClosed()).length)
+    .toBe(1);
   await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
 });
 

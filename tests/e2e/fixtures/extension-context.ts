@@ -1,13 +1,7 @@
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
-import {
-  chromium,
-  expect,
-  test as base,
-  type BrowserContext,
-  type Page,
-} from '@playwright/test';
+import { chromium, expect, test as base, type BrowserContext, type Page } from '@playwright/test';
 
 export const FIXTURE_ORIGIN = 'http://player.clickshield.test:4173';
 
