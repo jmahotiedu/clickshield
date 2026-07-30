@@ -77,7 +77,7 @@ export function createGuardedWindowOpen<TResult>(
     this: unknown,
     ...args: [url?: string | URL, target?: string, features?: string]
   ): TResult | null {
-    let blocked = false;
+    let blocked: boolean;
 
     try {
       const mode = options.getMode();
