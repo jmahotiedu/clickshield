@@ -39,7 +39,12 @@ describe('cosmetic selector resolution', () => {
 
   it('applies domain-specific selectors only to matching domains and subdomains', () => {
     expect(
-      resolveCosmeticSelectors('watch.example.com', 'standard', genericFilters, siteSpecificFilters),
+      resolveCosmeticSelectors(
+        'watch.example.com',
+        'standard',
+        genericFilters,
+        siteSpecificFilters,
+      ),
     ).toContain('.sponsored-card');
     expect(
       resolveCosmeticSelectors('unrelated.test', 'standard', genericFilters, siteSpecificFilters),
@@ -98,7 +103,9 @@ describe('cosmetic CSS and estimates', () => {
     const repeatedElement = { id: 'same-ad' };
     const root = {
       querySelectorAll(selector: string): Iterable<unknown> {
-        return selector === '.adsbygoogle' ? [repeatedElement] : [repeatedElement, { id: selector }];
+        return selector === '.adsbygoogle'
+          ? [repeatedElement]
+          : [repeatedElement, { id: selector }];
       },
     };
 
@@ -106,10 +113,7 @@ describe('cosmetic CSS and estimates', () => {
   });
 
   it('keeps legitimate fixture controls outside the generated hide rule', async () => {
-    const fixture = await readFile(
-      path.resolve('tests/fixtures/cosmetic-ads.html'),
-      'utf8',
-    );
+    const fixture = await readFile(path.resolve('tests/fixtures/cosmetic-ads.html'), 'utf8');
     const selectors = resolveCosmeticSelectors(
       'watch.example.com',
       'standard',
