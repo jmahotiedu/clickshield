@@ -55,12 +55,17 @@ export function sanitizePopupAttempt(
   target: string | undefined,
   timestamp: number,
   baseUrl: string,
+  blocked: boolean,
+  gesture: ApprovedPopupGesture | null,
 ): SanitizedPopupAttempt {
   return {
     url: sanitizeUrl(url, baseUrl),
     target: sanitizeTarget(target),
     timestamp,
-    blocked: true,
+    blocked,
+    approvedGesture: gesture !== null,
+    explicitNewContext: gesture?.explicitNewContext ?? false,
+    syntheticEvent: false,
   };
 }
 
@@ -75,14 +80,19 @@ export function createGuardedWindowOpen<TResult>(
     let blocked = false;
 
     try {
-      if (options.getMode() === 'strict') {
-        blocked = options.consumeGesture() === null;
-        if (blocked) {
-          options.publishAttempt(
-            sanitizePopupAttempt(args[0], args[1], options.clock(), options.baseUrl()),
-          );
-        }
-      }
+      const mode = options.getMode();
+      const gesture = mode === 'strict' ? options.consumeGesture() : null;
+      blocked = mode === 'strict' && gesture === null;
+      options.publishAttempt(
+        sanitizePopupAttempt(
+          args[0],
+          args[1],
+          options.clock(),
+          options.baseUrl(),
+          blocked,
+          gesture,
+        ),
+      );
     } catch {
       return originalOpen.apply(this, args);
     }
@@ -112,7 +122,7 @@ if (typeof window !== 'undefined') {
     getMode: () => currentMode,
     consumeGesture: () => tokenStore.consume(),
     publishAttempt: (attempt) => publishPopupAttempt(window, attempt),
-    clock: () => performance.now(),
+    clock: () => Date.now(),
     baseUrl: () => window.location.href,
   }) as typeof window.open;
 }
