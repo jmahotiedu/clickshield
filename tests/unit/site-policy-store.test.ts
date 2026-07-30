@@ -16,7 +16,9 @@ describe('site policy resolution', () => {
   });
 
   it('inherits a parent-domain mode', () => {
-    expect(resolveSiteMode('https://player.example.com/watch', { 'example.com': 'off' })).toBe('off');
+    expect(resolveSiteMode('https://player.example.com/watch', { 'example.com': 'off' })).toBe(
+      'off',
+    );
   });
 
   it('prefers a more-specific subdomain override', () => {
@@ -40,8 +42,12 @@ describe('site policy resolution', () => {
 
   it('treats IP addresses as exact hosts', () => {
     expect(getPolicyCandidates('127.0.0.1')).toEqual(['127.0.0.1']);
-    expect(resolveSiteMode('http://127.0.0.1:8080', { '127.0.0.1': 'strict' })).toBe('strict');
-    expect(resolveSiteMode('http://127.0.0.2:8080', { '127.0.0.1': 'strict' })).toBe('standard');
+    expect(resolveSiteMode('http://127.0.0.1:8080', { '127.0.0.1': 'strict' })).toBe(
+      'strict',
+    );
+    expect(resolveSiteMode('http://127.0.0.2:8080', { '127.0.0.1': 'strict' })).toBe(
+      'standard',
+    );
   });
 
   it('normalizes hostnames without weakening subdomain boundaries', () => {
