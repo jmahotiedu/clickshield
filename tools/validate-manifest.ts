@@ -16,6 +16,7 @@ export interface ExtensionManifest {
   background?: unknown;
   action?: unknown;
   content_scripts?: unknown;
+  declarative_net_request?: unknown;
 }
 
 export interface ManifestValidationResult {
@@ -75,6 +76,41 @@ function collectScriptPaths(contentScripts: unknown, errors: string[]): string[]
   return paths;
 }
 
+function collectRuleResourcePaths(value: unknown, errors: string[]): string[] {
+  if (!isRecord(value) || !Array.isArray(value.rule_resources)) {
+    errors.push('declarative_net_request.rule_resources must be an array.');
+    return [];
+  }
+
+  const ids = new Set<string>();
+  const paths: string[] = [];
+  value.rule_resources.forEach((resource, index) => {
+    if (!isRecord(resource)) {
+      errors.push(`declarative_net_request.rule_resources[${index}] must be an object.`);
+      return;
+    }
+
+    if (typeof resource.id !== 'string' || resource.id.length === 0) {
+      errors.push(`declarative_net_request.rule_resources[${index}].id must be a string.`);
+    } else if (ids.has(resource.id)) {
+      errors.push(`Duplicate declarative rule resource id "${resource.id}".`);
+    } else {
+      ids.add(resource.id);
+    }
+
+    if (!isRelativeExtensionPath(resource.path)) {
+      errors.push(
+        `declarative_net_request.rule_resources[${index}].path must be a local relative path.`,
+      );
+      return;
+    }
+
+    paths.push(resource.path);
+  });
+
+  return paths;
+}
+
 export function validateManifest(manifest: ExtensionManifest): ManifestValidationResult {
   const errors: string[] = [];
   const referencedFiles: string[] = [];
@@ -108,6 +144,7 @@ export function validateManifest(manifest: ExtensionManifest): ManifestValidatio
   }
 
   referencedFiles.push(...collectScriptPaths(manifest.content_scripts, errors));
+  referencedFiles.push(...collectRuleResourcePaths(manifest.declarative_net_request, errors));
 
   return {
     valid: errors.length === 0,

@@ -4,6 +4,7 @@ import path from 'node:path';
 import { build } from 'esbuild';
 
 import { validatePackagedManifest } from './validate-manifest.ts';
+import { validateProjectRulesets } from './validate-rulesets.ts';
 
 const projectRoot = path.resolve(import.meta.dirname, '..');
 const distRoot = path.join(projectRoot, 'dist');
@@ -44,6 +45,7 @@ async function copyStaticAssets(): Promise<void> {
   await mkdir(path.join(distRoot, 'popup'), { recursive: true });
   await cp(path.join(projectRoot, 'src/popup/popup.html'), path.join(distRoot, 'popup/popup.html'));
   await cp(path.join(projectRoot, 'src/popup/popup.css'), path.join(distRoot, 'popup/popup.css'));
+  await cp(path.join(projectRoot, 'filters'), path.join(distRoot, 'filters'), { recursive: true });
 
   const rawManifest = await readFile(path.join(projectRoot, 'manifest.json'), 'utf8');
   const normalizedManifest = `${JSON.stringify(JSON.parse(rawManifest), null, 2)}\n`;
@@ -51,6 +53,11 @@ async function copyStaticAssets(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  const rulesetResult = await validateProjectRulesets(projectRoot);
+  if (!rulesetResult.valid) {
+    throw new Error(`Declarative network rules are invalid:\n${rulesetResult.errors.join('\n')}`);
+  }
+
   await rm(distRoot, { recursive: true, force: true });
   await mkdir(distRoot, { recursive: true });
 
@@ -62,7 +69,9 @@ async function main(): Promise<void> {
     throw new Error(`Packaged extension is invalid:\n${result.errors.join('\n')}`);
   }
 
-  console.log(`Built ClickShield into ${distRoot}.`);
+  console.log(
+    `Built ClickShield into ${distRoot} with ${rulesetResult.ruleCount} network rules.`,
+  );
 }
 
 await main();

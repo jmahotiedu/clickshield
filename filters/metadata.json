@@ -1,0 +1,20 @@
+{
+  "formatVersion": 1,
+  "generatedDate": "2026-07-30",
+  "rulesets": [
+    {
+      "id": "base",
+      "path": "filters/declarative/base.json",
+      "source": "ClickShield hand-reviewed starter rules",
+      "license": "CC0-1.0",
+      "version": "2026.07.30"
+    },
+    {
+      "id": "tracking",
+      "path": "filters/declarative/tracking.json",
+      "source": "ClickShield hand-reviewed starter rules",
+      "license": "CC0-1.0",
+      "version": "2026.07.30"
+    }
+  ]
+}

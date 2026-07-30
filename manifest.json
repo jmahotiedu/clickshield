@@ -11,7 +11,7 @@
   "action": {
     "default_popup": "popup/popup.html"
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "declarativeNetRequest"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {
@@ -26,5 +26,19 @@
       "run_at": "document_start",
       "world": "MAIN"
     }
-  ]
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "base",
+        "enabled": true,
+        "path": "filters/declarative/base.json"
+      },
+      {
+        "id": "tracking",
+        "enabled": true,
+        "path": "filters/declarative/tracking.json"
+      }
+    ]
+  }
 }
