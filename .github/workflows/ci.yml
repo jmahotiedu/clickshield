@@ -5,16 +5,32 @@ on:
   pull_request:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
           cache: npm
       - run: npm ci
+      - name: Normalize popup classifier files
+        if: ${{ github.event_name == 'push' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm exec prettier -- --write tests/unit/popup-classifier.test.ts src/background/popup-classifier.ts src/shared/decisions.ts
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/unit/popup-classifier.test.ts src/background/popup-classifier.ts src/shared/decisions.ts
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "style: format popup classifier"
+          git push origin HEAD:${{ github.ref_name }}
       - run: npm run verify
