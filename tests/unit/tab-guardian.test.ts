@@ -115,6 +115,18 @@ describe('tab guardian', () => {
     expect(onBlocked).toHaveBeenCalledOnce();
   });
 
+  it('refreshes a created tab whose destination was initially unavailable', async () => {
+    const { guardian, tabs } = setup({ enforcement: 'enforce', correlation: null });
+    const createdTab = tab();
+    delete createdTab.url;
+
+    const result = await guardian.handleCreatedTab(createdTab);
+
+    expect(tabs.get).toHaveBeenCalledWith(20);
+    expect(result.decision.outcome).toBe('block');
+    expect(result.closed).toBe(true);
+  });
+
   it('does not mutate tabs for allow or observe decisions', async () => {
     const allowed = setup({
       enforcement: 'enforce',
