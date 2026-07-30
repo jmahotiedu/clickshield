@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ClickShield</title>
+    <link rel="stylesheet" href="popup.css" />
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>ClickShield</h1>
+        <p id="current-site">Loading current site…</p>
+      </header>
+
+      <fieldset id="mode-controls" disabled>
+        <legend>Protection mode</legend>
+        <label><input type="radio" name="mode" value="off" /> Off</label>
+        <label><input type="radio" name="mode" value="standard" /> Standard</label>
+        <label><input type="radio" name="mode" value="strict" /> Strict</label>
+      </fieldset>
+
+      <p id="strict-description" class="explanation"></p>
+
+      <dl class="statistics" aria-label="Page statistics">
+        <div>
+          <dt>Blocked requests</dt>
+          <dd id="blocked-requests">0</dd>
+        </div>
+        <div>
+          <dt>Hidden elements</dt>
+          <dd id="hidden-elements">0</dd>
+        </div>
+      </dl>
+
+      <details id="diagnostics">
+        <summary>
+          Recent popup decisions
+          <span id="diagnostics-count" aria-label="decision count">0</span>
+        </summary>
+        <p id="diagnostics-empty" class="explanation">No recent popup decisions for this tab.</p>
+        <ol id="diagnostics-list" aria-label="Recent popup decisions"></ol>
+        <button id="clear-diagnostics" type="button" disabled>Clear diagnostics</button>
+      </details>
+
+      <p id="status" role="status" aria-live="polite"></p>
+    </main>
+  </body>
+</html>
