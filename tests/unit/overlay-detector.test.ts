@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  scoreOverlay,
-  type OverlaySnapshot,
-} from '../../src/content/overlay-detector.ts';
+import { scoreOverlay, type OverlaySnapshot } from '../../src/content/overlay-detector.ts';
 
 function snapshot(overrides: Partial<OverlaySnapshot> = {}): OverlaySnapshot {
   return {
