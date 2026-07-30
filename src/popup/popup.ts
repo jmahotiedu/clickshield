@@ -104,7 +104,9 @@ async function initializePopup(chromeApi: ChromeApiLike): Promise<void> {
 
     try {
       const saved = await policyStore.setMode(viewModel.hostname, target.value);
-      status.textContent = saved ? `Protection set to ${target.value}.` : 'This page is unsupported.';
+      status.textContent = saved
+        ? `Protection set to ${target.value}.`
+        : 'This page is unsupported.';
     } catch {
       status.textContent = 'Could not save the protection mode.';
       renderMode(viewModel.mode);
@@ -116,7 +118,8 @@ async function initializePopup(chromeApi: ChromeApiLike): Promise<void> {
 
 const chromeApi = (globalThis as typeof globalThis & { chrome?: ChromeApiLike }).chrome;
 if (chromeApi === undefined) {
-  getRequiredElement<HTMLParagraphElement>('status').textContent = 'Extension APIs are unavailable.';
+  getRequiredElement<HTMLParagraphElement>('status').textContent =
+    'Extension APIs are unavailable.';
 } else {
   void initializePopup(chromeApi).catch(() => {
     getRequiredElement<HTMLParagraphElement>('status').textContent =

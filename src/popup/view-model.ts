@@ -26,7 +26,8 @@ function toNonNegativeInteger(value: unknown): number {
 }
 
 export function createPopupViewModel(input: PopupViewModelInput): PopupViewModel {
-  const hostname = input.url === null || input.url === undefined ? null : normalizeHostname(input.url);
+  const hostname =
+    input.url === null || input.url === undefined ? null : normalizeHostname(input.url);
 
   return {
     supported: hostname !== null,
