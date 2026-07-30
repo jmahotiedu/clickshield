@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Window open fixture</title>
+  </head>
+  <body>
+    <button id="legitimate-open" type="button">Open legitimate player</button>
+    <button id="unauthorized-open" type="button">Open unauthorized popup</button>
+    <script>
+      document.querySelector('#legitimate-open')?.addEventListener('click', () => {
+        window.open('/player', '_blank', 'noopener');
+      });
+      window.setTimeout(() => {
+        window.open('https://ads.example/popup?campaign=fixture', '_blank');
+      }, 250);
+    </script>
+  </body>
+</html>

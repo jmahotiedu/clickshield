@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "ClickShield",
+  "version": "0.1.0",
+  "description": "Blocks conventional ads and protects enabled sites from click hijacking and pop-unders.",
+  "minimum_chrome_version": "111",
+  "background": {
+    "service_worker": "background/service-worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup/popup.html"
+  },
+  "permissions": ["storage", "activeTab", "declarativeNetRequest"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["main-world/popup-guard.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "base",
+        "enabled": true,
+        "path": "filters/declarative/base.json"
+      },
+      {
+        "id": "tracking",
+        "enabled": true,
+        "path": "filters/declarative/tracking.json"
+      }
+    ]
+  }
+}
