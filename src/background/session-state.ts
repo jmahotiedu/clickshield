@@ -281,6 +281,15 @@ export class SessionStateStore implements PopupCorrelationStore {
     return cloneValue((await this.load()).decisions);
   }
 
+  async clearDecisionLog(sourceTabId?: number): Promise<void> {
+    await this.mutate((state) => {
+      state.decisions =
+        sourceTabId === undefined
+          ? []
+          : state.decisions.filter((entry) => entry.sourceTabId !== sourceTabId);
+    });
+  }
+
   async clearTab(tabId: number): Promise<void> {
     await this.mutate((state) => {
       delete state.attempts[String(tabId)];
