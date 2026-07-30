@@ -7,7 +7,15 @@ ClickShield is a Manifest V3 browser extension project focused on two forms of b
 
 ## Status
 
-Design and implementation planning. Application code has not been generated yet.
+Foundation implementation is in progress on `agent/project-foundation`.
+
+The current batch includes:
+
+- strict TypeScript project configuration
+- deterministic Manifest V3 packaging
+- manifest security and entry-point validation
+- shared site-mode, message, and popup-decision contracts
+- automated formatting, linting, type-checking, unit tests, and build verification
 
 ## Initial scope
 
@@ -19,4 +27,4 @@ Design and implementation planning. Application code has not been generated yet.
 - Explainable popup classification
 - Automated unit and browser-level tests
 
-See `plans/` on the planning branch for the approved architecture and implementation sequence.
+See `plans/` for the approved architecture and implementation sequence.
