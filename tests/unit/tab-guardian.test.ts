@@ -5,6 +5,7 @@ import {
   type PopupCorrelationContext,
   type PopupCorrelationStore,
   type TabAdapter,
+  type TabGuardianOptions,
   type TabSnapshot,
   type WindowAdapter,
 } from '../../src/background/tab-guardian.ts';
@@ -42,11 +43,14 @@ function setup(
   } = {},
 ) {
   const calls: string[] = [];
+  const sourceTab: TabSnapshot = {
+    id: 10,
+    windowId: 3,
+    url: 'https://player.example/watch',
+    active: false,
+  };
   const tabsById = new Map<number, TabSnapshot>([
-    [
-      10,
-      tab({ id: 10, openerTabId: undefined, url: 'https://player.example/watch', active: false }),
-    ],
+    [10, sourceTab],
     [20, tab()],
   ]);
   const tabs: TabAdapter = {
@@ -72,16 +76,19 @@ function setup(
     appendDecision: vi.fn(async () => undefined),
   };
   const onBlocked = vi.fn(async () => undefined);
-  const guardian = new TabGuardian({
+  const options: TabGuardianOptions = {
     tabs,
     windows,
     correlations,
     getMode: async () => 'strict',
     clock: () => 1_050,
     delay: async () => undefined,
-    enforcement: overrides.enforcement,
     onBlocked,
-  });
+  };
+  if (overrides.enforcement !== undefined) {
+    options.enforcement = overrides.enforcement;
+  }
+  const guardian = new TabGuardian(options);
 
   return { guardian, tabs, windows, correlations, onBlocked, calls };
 }
@@ -153,8 +160,10 @@ describe('tab guardian', () => {
 
   it('ignores tabs without an opener', async () => {
     const { guardian, tabs, correlations } = setup({ enforcement: 'enforce' });
+    const createdTab = tab();
+    delete createdTab.openerTabId;
 
-    const result = await guardian.handleCreatedTab(tab({ openerTabId: undefined }));
+    const result = await guardian.handleCreatedTab(createdTab);
 
     expect(result.decision.outcome).toBe('observe');
     expect(tabs.remove).not.toHaveBeenCalled();
