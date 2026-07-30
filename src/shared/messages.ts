@@ -85,10 +85,7 @@ function isModifierState(value: unknown): value is ModifierState {
   }
 
   return (
-    isBoolean(value.alt) &&
-    isBoolean(value.ctrl) &&
-    isBoolean(value.meta) &&
-    isBoolean(value.shift)
+    isBoolean(value.alt) && isBoolean(value.ctrl) && isBoolean(value.meta) && isBoolean(value.shift)
   );
 }
 
@@ -115,9 +112,7 @@ function isPopupAttemptPayload(value: unknown): value is PopupAttemptMessage['pa
   }
 
   return (
-    typeof value.url === 'string' &&
-    isStringOrNull(value.target) &&
-    isFiniteNumber(value.timestamp)
+    typeof value.url === 'string' && isStringOrNull(value.target) && isFiniteNumber(value.timestamp)
   );
 }
 
@@ -153,10 +148,7 @@ function isSettingsRequestPayload(value: unknown): value is SettingsRequestMessa
 }
 
 function isStatisticsUpdatePayload(value: unknown): value is StatisticsUpdateMessage['payload'] {
-  if (
-    !isRecord(value) ||
-    !hasOnlyKeys(value, ['tabId', 'blockedRequests', 'hiddenElements'])
-  ) {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['tabId', 'blockedRequests', 'hiddenElements'])) {
     return false;
   }
 

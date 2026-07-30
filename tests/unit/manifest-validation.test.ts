@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  type ExtensionManifest,
-  validateManifest,
-} from '../../tools/validate-manifest.ts';
+import { type ExtensionManifest, validateManifest } from '../../tools/validate-manifest.ts';
 
 const validManifest: ExtensionManifest = {
   manifest_version: 3,

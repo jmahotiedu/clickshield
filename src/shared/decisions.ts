@@ -25,9 +25,7 @@ export interface PopupDecision {
 }
 
 export function isPopupDecisionReason(value: unknown): value is PopupDecisionReason {
-  return (
-    typeof value === 'string' && POPUP_DECISION_REASONS.includes(value as PopupDecisionReason)
-  );
+  return typeof value === 'string' && POPUP_DECISION_REASONS.includes(value as PopupDecisionReason);
 }
 
 export function isPopupDecision(value: unknown): value is PopupDecision {

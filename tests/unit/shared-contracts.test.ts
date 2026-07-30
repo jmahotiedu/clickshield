@@ -115,8 +115,8 @@ describe('popup decision contracts', () => {
   it('rejects invalid outcomes, confidence, and reasons', () => {
     expect(isPopupDecision({ outcome: 'close', confidence: 65, reasons: [] })).toBe(false);
     expect(isPopupDecision({ outcome: 'block', confidence: 101, reasons: [] })).toBe(false);
-    expect(
-      isPopupDecision({ outcome: 'block', confidence: 90, reasons: ['made-up-reason'] }),
-    ).toBe(false);
+    expect(isPopupDecision({ outcome: 'block', confidence: 90, reasons: ['made-up-reason'] })).toBe(
+      false,
+    );
   });
 });

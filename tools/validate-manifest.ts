@@ -65,9 +65,7 @@ function collectScriptPaths(contentScripts: unknown, errors: string[]): string[]
 
     entry.js.forEach((scriptPath, scriptIndex) => {
       if (!isRelativeExtensionPath(scriptPath)) {
-        errors.push(
-          `content_scripts[${index}].js[${scriptIndex}] must be a local relative path.`,
-        );
+        errors.push(`content_scripts[${index}].js[${scriptIndex}] must be a local relative path.`);
         return;
       }
       paths.push(scriptPath);
