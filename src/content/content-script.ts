@@ -7,6 +7,7 @@ import {
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
 import { listenForPopupAttempts, publishModeUpdate } from '../main-world/event-bridge.ts';
+import type { SiteMode } from '../shared/settings.ts';
 import {
   COSMETIC_STYLE_ATTRIBUTE,
   COSMETIC_STYLE_VALUE,
@@ -22,6 +23,13 @@ import {
   type MutationRecordLike,
   type ObserverLike,
 } from './mutation-observer.ts';
+import { scoreOverlay, type OverlayAssessment } from './overlay-detector.ts';
+import {
+  OverlayMitigator,
+  createOverlaySnapshot,
+  type OverlayElementLike,
+  type OverlayMitigationAction,
+} from './overlay-mitigator.ts';
 
 interface ChromeRuntimeLike {
   sendMessage(message: unknown): Promise<unknown>;
@@ -49,9 +57,12 @@ interface ChromeApiLike {
 const genericFilters = genericConfiguration as unknown as GenericCosmeticFilters;
 const siteSpecificFilters = siteSpecificConfiguration as unknown as SiteSpecificCosmeticFilters;
 const countedElements = new WeakSet<Element>();
+const overlayMitigator = new OverlayMitigator();
 
 let currentSelectors: string[] = [];
 let currentStyle: HTMLStyleElement | null = null;
+let currentMode: SiteMode = 'off';
+let lastBlockedPopupTimestamp: number | null = null;
 let applicationVersion = 0;
 
 function waitForDocumentReady(): Promise<void> {
@@ -125,6 +136,18 @@ function collectInitialMatches(selectors: string[]): Element[] {
   return [...elements];
 }
 
+function collectInitialOverlayCandidates(maximum = 500): Element[] {
+  const selector = [
+    'iframe',
+    '[style*="position"]',
+    '[class*="overlay" i]',
+    '[id*="overlay" i]',
+    '[class*="pop" i]',
+    '[id*="pop" i]',
+  ].join(',');
+  return [...document.querySelectorAll(selector)].slice(0, maximum);
+}
+
 async function reportHiddenElements(
   chromeApi: ChromeApiLike,
   hiddenElements: number,
@@ -147,6 +170,60 @@ async function reportHiddenElements(
   }
 }
 
+function overlayReason(action: OverlayMitigationAction, assessment: OverlayAssessment): string {
+  return `${action}:${assessment.reasons.join('+')}`.slice(0, 256);
+}
+
+async function reportOverlayMitigation(
+  chromeApi: ChromeApiLike,
+  action: OverlayMitigationAction,
+  assessment: OverlayAssessment,
+): Promise<void> {
+  if (action === 'none') {
+    return;
+  }
+
+  try {
+    await chromeApi.runtime.sendMessage({
+      type: 'blocked-action',
+      payload: {
+        category: 'overlay',
+        reason: overlayReason(action, assessment),
+      },
+    });
+  } catch {
+    // The mitigation remains reversible locally if the worker is unavailable.
+  }
+}
+
+function processOverlays(chromeApi: ChromeApiLike, elements: Iterable<ElementLike>): void {
+  if (currentMode !== 'strict') {
+    return;
+  }
+
+  const timestamp = Date.now();
+  for (const element of elements) {
+    if (!(element instanceof Element)) {
+      continue;
+    }
+
+    const assessment = scoreOverlay(
+      createOverlaySnapshot(element, timestamp, lastBlockedPopupTimestamp),
+    );
+    const action = overlayMitigator.mitigate(
+      element as unknown as OverlayElementLike,
+      assessment,
+      currentMode,
+    );
+    void reportOverlayMitigation(chromeApi, action, assessment);
+  }
+}
+
+function processElements(chromeApi: ChromeApiLike, elements: ElementLike[]): void {
+  void reportHiddenElements(chromeApi, countNewMatches(elements, currentSelectors));
+  processOverlays(chromeApi, elements);
+}
+
 function createNativeObserver(callback: (records: MutationRecordLike[]) => void): ObserverLike {
   const observer = new MutationObserver((records) => callback(records));
 
@@ -163,9 +240,7 @@ function createNativeObserver(callback: (records: MutationRecordLike[]) => void)
 async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<void> {
   const policyStore = new SitePolicyStore(new ChromeSyncSitePolicyStorage(chromeApi.storage.sync));
   const processor = new BatchedMutationProcessor(
-    (elements) => {
-      void reportHiddenElements(chromeApi, countNewMatches(elements, currentSelectors));
-    },
+    (elements) => processElements(chromeApi, elements),
     { delayMs: 50, maxNodes: 500 },
   );
   const lifecycle = new MutationObserverLifecycle(createNativeObserver, (records) => {
@@ -173,6 +248,10 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
   });
 
   listenForPopupAttempts(window, (attempt) => {
+    if (attempt.blocked) {
+      lastBlockedPopupTimestamp = attempt.timestamp;
+    }
+
     const messages: unknown[] = [
       {
         type: 'popup-attempt',
@@ -210,18 +289,26 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
       return;
     }
 
+    processor.disconnect();
+    lifecycle.setEnabled(false, document.documentElement);
+    currentMode = mode;
     publishModeUpdate(window, mode);
+
+    if (mode !== 'strict') {
+      overlayMitigator.restoreAll();
+      lastBlockedPopupTimestamp = null;
+    }
+
     currentSelectors = resolveCosmeticSelectors(
       globalThis.location.hostname,
       mode,
       genericFilters,
       siteSpecificFilters,
     );
-    processor.disconnect();
-    lifecycle.setEnabled(false, document.documentElement);
     replaceCosmeticStyle(currentSelectors);
 
-    if (currentSelectors.length === 0) {
+    const shouldObserve = currentSelectors.length > 0 || mode === 'strict';
+    if (!shouldObserve) {
       return;
     }
 
@@ -230,11 +317,11 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
       return;
     }
 
-    const initialHiddenElements = countNewMatches(
-      collectInitialMatches(currentSelectors),
-      currentSelectors,
-    );
-    await reportHiddenElements(chromeApi, initialHiddenElements);
+    const initialElements = new Set<Element>(collectInitialMatches(currentSelectors));
+    if (mode === 'strict') {
+      collectInitialOverlayCandidates().forEach((element) => initialElements.add(element));
+    }
+    processElements(chromeApi, [...initialElements]);
     lifecycle.setEnabled(true, document.documentElement);
   };
 
