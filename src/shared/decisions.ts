@@ -8,11 +8,14 @@ export const POPUP_DECISION_REASONS = [
   'strict-mode-disabled',
   'approved-user-gesture',
   'explicit-new-tab-gesture',
+  'valid-popup-token',
+  'authentication-flow',
   'synthetic-event',
   'no-approved-user-gesture',
   'cross-site-destination',
   'known-ad-destination',
   'suspicious-creation-timing',
+  'missing-evidence',
   'unsupported-url',
 ] as const;
 
