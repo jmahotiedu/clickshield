@@ -26,9 +26,10 @@ describe('guarded window.open', () => {
       return returned;
     });
     const consumeGesture = vi.fn(() => null);
+    const publishAttempt = vi.fn();
     const guarded = createGuardedWindowOpen(
       original,
-      strictOptions({ getMode: () => 'standard', consumeGesture }),
+      strictOptions({ getMode: () => 'standard', consumeGesture, publishAttempt }),
     );
     const receiver = { name: 'window-like' };
 
@@ -42,15 +43,26 @@ describe('guarded window.open', () => {
     );
     expect(original.mock.contexts[0]).toBe(receiver);
     expect(consumeGesture).not.toHaveBeenCalled();
+    expect(publishAttempt).toHaveBeenCalledWith({
+      url: 'https://example.com/path',
+      target: '_blank',
+      timestamp: 1_000,
+      blocked: false,
+      approvedGesture: false,
+      explicitNewContext: false,
+      syntheticEvent: false,
+    });
   });
 
-  it('allows a Strict-mode open with a valid one-use gesture', () => {
+  it('allows a Strict-mode open with a valid one-use gesture and publishes the gesture summary', () => {
     const original = vi.fn(() => ({ opened: true }));
+    const publishAttempt = vi.fn();
     const guarded = createGuardedWindowOpen(
       original,
       strictOptions({
+        publishAttempt,
         consumeGesture: () => ({
-          explicitNewContext: false,
+          explicitNewContext: true,
           source: 'pointer',
           timestamp: 990,
           href: 'https://example.com/path',
@@ -60,6 +72,15 @@ describe('guarded window.open', () => {
 
     expect(guarded('https://example.com/path', '_blank')).toEqual({ opened: true });
     expect(original).toHaveBeenCalledOnce();
+    expect(publishAttempt).toHaveBeenCalledWith({
+      url: 'https://example.com/path',
+      target: '_blank',
+      timestamp: 1_000,
+      blocked: false,
+      approvedGesture: true,
+      explicitNewContext: true,
+      syntheticEvent: false,
+    });
   });
 
   it('returns null and publishes a sanitized record for an unapproved Strict-mode open', () => {
@@ -76,6 +97,9 @@ describe('guarded window.open', () => {
       target: '_blank',
       timestamp: 1_000,
       blocked: true,
+      approvedGesture: false,
+      explicitNewContext: false,
+      syntheticEvent: false,
     });
   });
 
@@ -104,12 +128,17 @@ describe('popup-attempt sanitization', () => {
         '_blank',
         10,
         'https://player.example/watch',
+        false,
+        null,
       ),
     ).toEqual({
       url: 'https://player.example/auth/callback',
       target: '_blank',
       timestamp: 10,
-      blocked: true,
+      blocked: false,
+      approvedGesture: false,
+      explicitNewContext: false,
+      syntheticEvent: false,
     });
   });
 });
