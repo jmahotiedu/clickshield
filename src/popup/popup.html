@@ -34,6 +34,16 @@
         </div>
       </dl>
 
+      <details id="diagnostics">
+        <summary>
+          Recent popup decisions
+          <span id="diagnostics-count" aria-label="decision count">0</span>
+        </summary>
+        <p id="diagnostics-empty" class="explanation">No recent popup decisions for this tab.</p>
+        <ol id="diagnostics-list" aria-label="Recent popup decisions"></ol>
+        <button id="clear-diagnostics" type="button" disabled>Clear diagnostics</button>
+      </details>
+
       <p id="status" role="status" aria-live="polite"></p>
     </main>
   </body>
