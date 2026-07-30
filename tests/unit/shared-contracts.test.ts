@@ -25,6 +25,10 @@ const validMessages: ExtensionMessage[] = [
       url: 'https://example.com/',
       target: '_blank',
       timestamp: 2,
+      blocked: false,
+      approvedGesture: true,
+      explicitNewContext: false,
+      syntheticEvent: false,
     },
   },
   {
@@ -89,7 +93,16 @@ describe('extension message validation', () => {
     },
     {
       type: 'popup-attempt',
-      payload: { url: 'https://example.com', target: null, timestamp: 1, extra: true },
+      payload: {
+        url: 'https://example.com',
+        target: null,
+        timestamp: 1,
+        blocked: false,
+        approvedGesture: true,
+        explicitNewContext: false,
+        syntheticEvent: false,
+        extra: true,
+      },
     },
   ])('rejects malformed boundary input %#', (message) => {
     expect(isExtensionMessage(message)).toBe(false);
