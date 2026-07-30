@@ -24,10 +24,10 @@ function context(overrides: Partial<PopupCorrelationContext> = {}): PopupCorrela
   };
 }
 
-function decision(index: number): PopupDecisionLogEntry {
+function decision(index: number, sourceTabId = 10): PopupDecisionLogEntry {
   return {
     tabId: 20 + index,
-    sourceTabId: 10,
+    sourceTabId,
     timestamp: 2_000 + index,
     destination: 'https://doubleclick.net/pop',
     decision: {
@@ -122,5 +122,15 @@ describe('session popup correlation state', () => {
     }
 
     await expect(store.getDecisionLog()).resolves.toEqual([decision(2), decision(3), decision(4)]);
+  });
+
+  it('clears diagnostics for one opener tab without resetting other decisions', async () => {
+    const store = new SessionStateStore(new InMemorySessionStateStorage());
+    await store.appendDecision(decision(0, 10));
+    await store.appendDecision(decision(1, 99));
+
+    await store.clearDecisionLog(10);
+
+    await expect(store.getDecisionLog()).resolves.toEqual([decision(1, 99)]);
   });
 });
