@@ -16,6 +16,7 @@ const KNOWN_AD_HOSTS = [
   'adsrvr.org',
   'taboola.com',
   'outbrain.com',
+  'ads.clickshield.test',
 ] as const;
 
 export interface TabSnapshot {
