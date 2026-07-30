@@ -33,15 +33,20 @@ function context(overrides: Partial<PopupCorrelationContext> = {}): PopupCorrela
   };
 }
 
-function setup(overrides: {
-  enforcement?: 'observe' | 'enforce';
-  activeTabId?: number | null;
-  removeError?: Error;
-  correlation?: PopupCorrelationContext | null;
-} = {}) {
+function setup(
+  overrides: {
+    enforcement?: 'observe' | 'enforce';
+    activeTabId?: number | null;
+    removeError?: Error;
+    correlation?: PopupCorrelationContext | null;
+  } = {},
+) {
   const calls: string[] = [];
   const tabsById = new Map<number, TabSnapshot>([
-    [10, tab({ id: 10, openerTabId: undefined, url: 'https://player.example/watch', active: false })],
+    [
+      10,
+      tab({ id: 10, openerTabId: undefined, url: 'https://player.example/watch', active: false }),
+    ],
     [20, tab()],
   ]);
   const tabs: TabAdapter = {
@@ -114,9 +119,10 @@ describe('tab guardian', () => {
     });
 
     expect((await allowed.guardian.handleCreatedTab(tab())).decision.outcome).toBe('allow');
-    expect((await observed.guardian.handleCreatedTab(tab({ url: 'https://news.example/article' }))).decision.outcome).toBe(
-      'observe',
-    );
+    expect(
+      (await observed.guardian.handleCreatedTab(tab({ url: 'https://news.example/article' })))
+        .decision.outcome,
+    ).toBe('observe');
     expect(allowed.tabs.remove).not.toHaveBeenCalled();
     expect(observed.tabs.remove).not.toHaveBeenCalled();
   });
