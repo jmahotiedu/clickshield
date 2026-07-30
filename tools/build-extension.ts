@@ -38,6 +38,7 @@ async function buildScripts(): Promise<void> {
     ...sharedBuildOptions,
     entryPoints: {
       'content/content-script': path.join(projectRoot, 'src/content/content-script.ts'),
+      'content/mode-channel': path.join(projectRoot, 'src/content/mode-channel.ts'),
       'main-world/popup-guard': path.join(projectRoot, 'src/main-world/popup-guard.ts'),
       'popup/popup': path.join(projectRoot, 'src/popup/popup.ts'),
     },
