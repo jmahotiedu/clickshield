@@ -81,7 +81,7 @@ describe('batched mutation processing', () => {
   it('coalesces multiple mutation deliveries into one processing pass', () => {
     const processed: string[][] = [];
     const processor = new BatchedMutationProcessor(
-      (elements) => processed.push(elements.map((element) => element.name)),
+      (elements) => processed.push(elements.map((element) => element.name ?? '')),
       { delayMs: 25, maxNodes: 20 },
     );
 
