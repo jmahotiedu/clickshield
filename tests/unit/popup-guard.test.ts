@@ -32,9 +32,9 @@ describe('guarded window.open', () => {
     );
     const receiver = { name: 'window-like' };
 
-    expect(
-      guarded.call(receiver, 'https://example.com/path', '_blank', 'noopener,width=400'),
-    ).toBe(returned);
+    expect(guarded.call(receiver, 'https://example.com/path', '_blank', 'noopener,width=400')).toBe(
+      returned,
+    );
     expect(original).toHaveBeenCalledWith(
       'https://example.com/path',
       '_blank',

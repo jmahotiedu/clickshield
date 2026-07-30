@@ -6,10 +6,7 @@ import {
   SitePolicyStore,
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
-import {
-  listenForPopupAttempts,
-  publishModeUpdate,
-} from '../main-world/event-bridge.ts';
+import { listenForPopupAttempts, publishModeUpdate } from '../main-world/event-bridge.ts';
 import {
   COSMETIC_STYLE_ATTRIBUTE,
   COSMETIC_STYLE_VALUE,

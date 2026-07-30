@@ -40,7 +40,11 @@ export function listenForModeUpdates(
   listener: (mode: SiteMode) => void,
 ): () => void {
   const handleEvent: EventListener = (event) => {
-    if (!(event instanceof CustomEvent) || !isRecord(event.detail) || !isSiteMode(event.detail.mode)) {
+    if (
+      !(event instanceof CustomEvent) ||
+      !isRecord(event.detail) ||
+      !isSiteMode(event.detail.mode)
+    ) {
       return;
     }
 
@@ -51,10 +55,7 @@ export function listenForModeUpdates(
   return () => target.removeEventListener(MODE_UPDATE_EVENT, handleEvent);
 }
 
-export function publishPopupAttempt(
-  target: EventTargetLike,
-  attempt: SanitizedPopupAttempt,
-): void {
+export function publishPopupAttempt(target: EventTargetLike, attempt: SanitizedPopupAttempt): void {
   target.dispatchEvent(new CustomEvent(POPUP_ATTEMPT_EVENT, { detail: attempt }));
 }
 
