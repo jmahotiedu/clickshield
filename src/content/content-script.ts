@@ -6,7 +6,6 @@ import {
   SitePolicyStore,
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
-import { listenForPopupAttempts, publishModeUpdate } from '../main-world/event-bridge.ts';
 import type { SiteMode } from '../shared/settings.ts';
 import {
   COSMETIC_STYLE_ATTRIBUTE,
@@ -62,7 +61,6 @@ const overlayMitigator = new OverlayMitigator();
 let currentSelectors: string[] = [];
 let currentStyle: HTMLStyleElement | null = null;
 let currentMode: SiteMode = 'off';
-let lastBlockedPopupTimestamp: number | null = null;
 let applicationVersion = 0;
 
 function waitForDocumentReady(): Promise<void> {
@@ -207,9 +205,7 @@ function processOverlays(chromeApi: ChromeApiLike, elements: Iterable<ElementLik
       continue;
     }
 
-    const assessment = scoreOverlay(
-      createOverlaySnapshot(element, timestamp, lastBlockedPopupTimestamp),
-    );
+    const assessment = scoreOverlay(createOverlaySnapshot(element, timestamp, null));
     const action = overlayMitigator.mitigate(
       element as unknown as OverlayElementLike,
       assessment,
@@ -247,41 +243,6 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.enqueue(records);
   });
 
-  listenForPopupAttempts(window, (attempt) => {
-    if (attempt.blocked) {
-      lastBlockedPopupTimestamp = attempt.timestamp;
-    }
-
-    const messages: unknown[] = [
-      {
-        type: 'popup-attempt',
-        payload: {
-          url: attempt.url,
-          target: attempt.target,
-          timestamp: attempt.timestamp,
-          blocked: attempt.blocked,
-          approvedGesture: attempt.approvedGesture,
-          explicitNewContext: attempt.explicitNewContext,
-          syntheticEvent: attempt.syntheticEvent,
-        },
-      },
-    ];
-
-    if (attempt.blocked) {
-      messages.push({
-        type: 'blocked-action',
-        payload: {
-          category: 'popup',
-          reason: 'no-approved-user-gesture',
-        },
-      });
-    }
-
-    void Promise.all(messages.map((message) => chromeApi.runtime.sendMessage(message))).catch(
-      () => undefined,
-    );
-  });
-
   const applyCurrentPolicy = async (): Promise<void> => {
     const version = ++applicationVersion;
     const mode = await policyStore.getMode(globalThis.location.href);
@@ -292,11 +253,9 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.disconnect();
     lifecycle.setEnabled(false, document.documentElement);
     currentMode = mode;
-    publishModeUpdate(window, mode);
 
     if (mode !== 'strict') {
       overlayMitigator.restoreAll();
-      lastBlockedPopupTimestamp = null;
     }
 
     currentSelectors = resolveCosmeticSelectors(
