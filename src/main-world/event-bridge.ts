@@ -140,17 +140,3 @@ export function installMainWorldBridge(
     },
   };
 }
-
-export function publishModeUpdate(target: unknown, mode: SiteMode): void {
-  void target;
-  void mode;
-}
-
-export function listenForPopupAttempts(
-  target: unknown,
-  listener: (attempt: SanitizedPopupAttempt) => void,
-): () => void {
-  void target;
-  void listener;
-  return () => undefined;
-}
