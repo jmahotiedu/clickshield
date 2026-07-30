@@ -18,6 +18,15 @@ const validManifest: ExtensionManifest = {
       js: ['content/content-script.js'],
     },
   ],
+  declarative_net_request: {
+    rule_resources: [
+      {
+        id: 'base',
+        enabled: true,
+        path: 'filters/declarative/base.json',
+      },
+    ],
+  },
 };
 
 describe('manifest validation', () => {
@@ -30,6 +39,7 @@ describe('manifest validation', () => {
       referencedFiles: [
         'background/service-worker.js',
         'content/content-script.js',
+        'filters/declarative/base.json',
         'popup/popup.html',
       ],
     });
@@ -55,11 +65,12 @@ describe('manifest validation', () => {
         'background must be an object.',
         'action must be an object.',
         'content_scripts must contain at least one entry.',
+        'declarative_net_request.rule_resources must be an array.',
       ]),
     );
   });
 
-  it('rejects remotely hosted executable entry points', () => {
+  it('rejects remotely hosted executable and rule entry points', () => {
     const result = validateManifest({
       ...validManifest,
       background: {
@@ -71,6 +82,14 @@ describe('manifest validation', () => {
           js: ['https://example.com/remote-content.js'],
         },
       ],
+      declarative_net_request: {
+        rule_resources: [
+          {
+            id: 'base',
+            path: 'https://example.com/remote-rules.json',
+          },
+        ],
+      },
     });
 
     expect(result.valid).toBe(false);
@@ -78,6 +97,7 @@ describe('manifest validation', () => {
       expect.arrayContaining([
         'background.service_worker must be a local relative path.',
         'content_scripts[0].js[0] must be a local relative path.',
+        'declarative_net_request.rule_resources[0].path must be a local relative path.',
       ]),
     );
   });
