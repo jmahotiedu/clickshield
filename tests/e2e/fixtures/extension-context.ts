@@ -23,7 +23,11 @@ interface ExtensionStorageApi {
 }
 
 export const test = base.extend<ExtensionFixtures>({
-  context: async (_dependencies, use, testInfo) => {
+  context: async ({ browserName }, use, testInfo) => {
+    if (browserName !== 'chromium') {
+      throw new Error('ClickShield extension tests require Chromium.');
+    }
+
     const extensionPath = path.resolve('dist');
     const userDataDirectory = testInfo.outputPath('user-data');
     await mkdir(userDataDirectory, { recursive: true });
