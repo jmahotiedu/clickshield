@@ -175,23 +175,32 @@ export class TabGuardian {
 
     await this.options.delay(TAB_CORRELATION_DELAY_MS);
 
-    const [sourceTab, correlation] = await Promise.all([
+    const [sourceTab, refreshedCreatedTab] = await Promise.all([
       this.options.tabs.get(sourceTabId),
-      this.options.correlations.consumeRecentAttempt(sourceTabId, initialDestination, now),
+      this.options.tabs.get(createdTab.id),
     ]);
-    const destinationUrl = initialDestination ?? correlation?.destinationUrl ?? null;
+    const destinationUrl =
+      refreshedCreatedTab?.pendingUrl ??
+      refreshedCreatedTab?.url ??
+      initialDestination;
+    const correlation = await this.options.correlations.consumeRecentAttempt(
+      sourceTabId,
+      destinationUrl,
+      now,
+    );
+    const correlatedDestination = destinationUrl ?? correlation?.destinationUrl ?? null;
     const sourceUrl = sourceTab?.url ?? correlation?.sourceUrl ?? null;
     const mode = sourceUrl === null ? 'off' : await this.options.getMode(sourceUrl);
     const evidence: PopupClassificationEvidence = {
       mode,
       sourceUrl,
-      destinationUrl,
+      destinationUrl: correlatedDestination,
       approvedGesture: correlation?.approvedGesture ?? false,
       explicitNewContext: correlation?.explicitNewContext ?? false,
       popupTokenValid: false,
       syntheticEvent: correlation?.syntheticEvent ?? false,
-      knownAdDestination: isKnownAdDestination(destinationUrl),
-      authenticationFlow: isAuthenticationFlow(destinationUrl),
+      knownAdDestination: isKnownAdDestination(correlatedDestination),
+      authenticationFlow: isAuthenticationFlow(correlatedDestination),
       creationDelayMs: correlation === null ? null : Math.max(0, now - correlation.timestamp),
     };
     const decision = classifyPopup(evidence);
@@ -221,7 +230,7 @@ export class TabGuardian {
       tabId: createdTab.id,
       sourceTabId,
       timestamp: now,
-      destination: sanitizeDestination(destinationUrl),
+      destination: sanitizeDestination(correlatedDestination),
       decision,
       closed,
     };
