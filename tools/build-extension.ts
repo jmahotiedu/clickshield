@@ -69,9 +69,7 @@ async function main(): Promise<void> {
     throw new Error(`Packaged extension is invalid:\n${result.errors.join('\n')}`);
   }
 
-  console.log(
-    `Built ClickShield into ${distRoot} with ${rulesetResult.ruleCount} network rules.`,
-  );
+  console.log(`Built ClickShield into ${distRoot} with ${rulesetResult.ruleCount} network rules.`);
 }
 
 await main();

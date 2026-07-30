@@ -183,7 +183,9 @@ export function validateRulesets(
   };
 }
 
-export async function validateProjectRulesets(projectRoot: string): Promise<RulesetValidationResult> {
+export async function validateProjectRulesets(
+  projectRoot: string,
+): Promise<RulesetValidationResult> {
   const manifestPath = path.join(projectRoot, 'manifest.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
   const dnr = manifest.declarative_net_request;
