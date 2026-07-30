@@ -173,19 +173,34 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
   });
 
   listenForPopupAttempts(window, (attempt) => {
-    if (!attempt.blocked) {
-      return;
-    }
+    const messages: unknown[] = [
+      {
+        type: 'popup-attempt',
+        payload: {
+          url: attempt.url,
+          target: attempt.target,
+          timestamp: attempt.timestamp,
+          blocked: attempt.blocked,
+          approvedGesture: attempt.approvedGesture,
+          explicitNewContext: attempt.explicitNewContext,
+          syntheticEvent: attempt.syntheticEvent,
+        },
+      },
+    ];
 
-    void chromeApi.runtime
-      .sendMessage({
+    if (attempt.blocked) {
+      messages.push({
         type: 'blocked-action',
         payload: {
           category: 'popup',
           reason: 'no-approved-user-gesture',
         },
-      })
-      .catch(() => undefined);
+      });
+    }
+
+    void Promise.all(messages.map((message) => chromeApi.runtime.sendMessage(message))).catch(
+      () => undefined,
+    );
   });
 
   const applyCurrentPolicy = async (): Promise<void> => {
