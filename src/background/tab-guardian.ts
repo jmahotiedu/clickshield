@@ -131,6 +131,17 @@ function sanitizeDestination(value: string | null): string | null {
   return url === null ? null : `${url.origin}${url.pathname}`.slice(0, 2_048);
 }
 
+function selectDestination(
+  initialDestination: string | null,
+  refreshedCreatedTab: TabSnapshot | null,
+): string | null {
+  if (parseUrl(initialDestination) !== null) {
+    return initialDestination;
+  }
+
+  return refreshedCreatedTab?.pendingUrl ?? refreshedCreatedTab?.url ?? initialDestination;
+}
+
 function missingEvidenceDecision(): PopupDecision {
   return {
     outcome: 'observe',
@@ -179,8 +190,7 @@ export class TabGuardian {
       this.options.tabs.get(sourceTabId),
       this.options.tabs.get(createdTab.id),
     ]);
-    const destinationUrl =
-      refreshedCreatedTab?.pendingUrl ?? refreshedCreatedTab?.url ?? initialDestination;
+    const destinationUrl = selectDestination(initialDestination, refreshedCreatedTab);
     const correlation = await this.options.correlations.consumeRecentAttempt(
       sourceTabId,
       destinationUrl,
