@@ -1,12 +1,16 @@
 import {
+  ChromeSyncSitePolicyStorage,
+  SITE_POLICIES_STORAGE_KEY,
+  SitePolicyStore,
+  type ChromeStorageAreaLike,
+} from '../background/site-policy-store.ts';
+import {
   BRIDGE_BOOTSTRAP_MESSAGE,
   BRIDGE_READY_MESSAGE,
   MODE_UPDATE_MESSAGE,
   isPopupAttemptMessage,
   type SanitizedPopupAttempt,
 } from '../main-world/event-bridge.ts';
-import { SITE_POLICIES_STORAGE_KEY } from '../background/site-policy-store.ts';
-import { isSiteMode, type SiteMode } from '../shared/settings.ts';
 import { hasOnlyKeys, isRecord } from '../shared/types.ts';
 
 interface ChromeRuntimeLike {
@@ -30,11 +34,16 @@ interface ChromeStorageChangedLike {
 interface ChromeApiLike {
   runtime: ChromeRuntimeLike;
   storage: {
+    sync: ChromeStorageAreaLike;
     onChanged: ChromeStorageChangedLike;
   };
 }
 
 interface WindowPostMessageLike {
+  location: {
+    href: string;
+    ancestorOrigins: DOMStringList;
+  };
   postMessage(message: unknown, targetOrigin: string, transfer: Transferable[]): void;
 }
 
@@ -42,12 +51,13 @@ function isReadyMessage(value: unknown): boolean {
   return isRecord(value) && hasOnlyKeys(value, ['type']) && value.type === BRIDGE_READY_MESSAGE;
 }
 
-function parseModeResponse(value: unknown): SiteMode | null {
-  if (!isRecord(value) || !hasOnlyKeys(value, ['mode']) || !isSiteMode(value.mode)) {
-    return null;
+export function resolveTopLevelPolicyUrl(target: WindowPostMessageLike): string {
+  const { ancestorOrigins } = target.location;
+  if (ancestorOrigins.length === 0) {
+    return target.location.href;
   }
 
-  return value.mode;
+  return ancestorOrigins.item(ancestorOrigins.length - 1) ?? target.location.href;
 }
 
 async function forwardPopupAttempt(
@@ -79,6 +89,7 @@ export function installAuthenticatedModeChannel(
   chromeApi: ChromeApiLike,
 ): () => void {
   const channel = new MessageChannel();
+  const policyStore = new SitePolicyStore(new ChromeSyncSitePolicyStorage(chromeApi.storage.sync));
   let connected = false;
   let disposed = false;
   let requestVersion = 0;
@@ -87,12 +98,8 @@ export function installAuthenticatedModeChannel(
     const version = ++requestVersion;
 
     try {
-      const response = await chromeApi.runtime.sendMessage({
-        type: 'effective-mode-request',
-        payload: {},
-      });
-      const mode = parseModeResponse(response);
-      if (disposed || !connected || version !== requestVersion || mode === null) {
+      const mode = await policyStore.getMode(resolveTopLevelPolicyUrl(target));
+      if (disposed || !connected || version !== requestVersion) {
         return;
       }
 
