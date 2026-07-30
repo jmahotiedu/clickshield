@@ -124,7 +124,10 @@ function collectInitialMatches(selectors: string[]): Element[] {
   return [...elements];
 }
 
-async function reportHiddenElements(chromeApi: ChromeApiLike, hiddenElements: number): Promise<void> {
+async function reportHiddenElements(
+  chromeApi: ChromeApiLike,
+  hiddenElements: number,
+): Promise<void> {
   if (hiddenElements <= 0) {
     return;
   }

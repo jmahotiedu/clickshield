@@ -109,7 +109,9 @@ describe('batched mutation processing', () => {
 
 describe('observer lifecycle', () => {
   it('disconnects in Off mode and reconnects when protection is enabled', () => {
-    const observers: Array<ObserverLike & { observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+    const observers: Array<
+      ObserverLike & { observe: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }
+    > = [];
     const lifecycle = new MutationObserverLifecycle(
       () => {
         const observer = {
