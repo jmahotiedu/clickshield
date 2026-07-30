@@ -8,6 +8,9 @@ export interface SanitizedPopupAttempt {
   target: string | null;
   timestamp: number;
   blocked: boolean;
+  approvedGesture: boolean;
+  explicitNewContext: boolean;
+  syntheticEvent: boolean;
 }
 
 interface EventTargetLike {
@@ -27,7 +30,10 @@ export function isSanitizedPopupAttempt(value: unknown): value is SanitizedPopup
     (typeof value.target === 'string' || value.target === null) &&
     typeof value.timestamp === 'number' &&
     Number.isFinite(value.timestamp) &&
-    typeof value.blocked === 'boolean'
+    typeof value.blocked === 'boolean' &&
+    typeof value.approvedGesture === 'boolean' &&
+    typeof value.explicitNewContext === 'boolean' &&
+    typeof value.syntheticEvent === 'boolean'
   );
 }
 
