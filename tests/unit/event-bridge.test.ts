@@ -62,7 +62,7 @@ class FakeWindowTarget {
   }
 
   emitMessage(data: unknown, ports: MessagePort[] = [], source: unknown = this): void {
-    const event = { data, ports, source } as MessageEvent<unknown>;
+    const event = { data, ports, source } as unknown as MessageEvent<unknown>;
     for (const listener of [...this.listeners]) {
       listener(event);
     }
