@@ -3,6 +3,11 @@ import path from 'node:path';
 
 import { build } from 'esbuild';
 
+import {
+  validateCosmeticConfiguration,
+  type GenericCosmeticFilters,
+  type SiteSpecificCosmeticFilters,
+} from '../src/content/cosmetic-engine.ts';
 import { validatePackagedManifest } from './validate-manifest.ts';
 import { validateProjectRulesets } from './validate-rulesets.ts';
 
@@ -52,10 +57,30 @@ async function copyStaticAssets(): Promise<void> {
   await writeFile(path.join(distRoot, 'manifest.json'), normalizedManifest, 'utf8');
 }
 
+async function validateProjectCosmeticFilters(): Promise<{
+  valid: boolean;
+  errors: string[];
+  selectorCount: number;
+}> {
+  const generic = JSON.parse(
+    await readFile(path.join(projectRoot, 'filters/cosmetic/generic.json'), 'utf8'),
+  ) as GenericCosmeticFilters;
+  const siteSpecific = JSON.parse(
+    await readFile(path.join(projectRoot, 'filters/cosmetic/site-specific.json'), 'utf8'),
+  ) as SiteSpecificCosmeticFilters;
+
+  return validateCosmeticConfiguration(generic, siteSpecific);
+}
+
 async function main(): Promise<void> {
   const rulesetResult = await validateProjectRulesets(projectRoot);
   if (!rulesetResult.valid) {
     throw new Error(`Declarative network rules are invalid:\n${rulesetResult.errors.join('\n')}`);
+  }
+
+  const cosmeticResult = await validateProjectCosmeticFilters();
+  if (!cosmeticResult.valid) {
+    throw new Error(`Cosmetic filters are invalid:\n${cosmeticResult.errors.join('\n')}`);
   }
 
   await rm(distRoot, { recursive: true, force: true });
@@ -69,7 +94,9 @@ async function main(): Promise<void> {
     throw new Error(`Packaged extension is invalid:\n${result.errors.join('\n')}`);
   }
 
-  console.log(`Built ClickShield into ${distRoot} with ${rulesetResult.ruleCount} network rules.`);
+  console.log(
+    `Built ClickShield into ${distRoot} with ${rulesetResult.ruleCount} network rules and ${cosmeticResult.selectorCount} cosmetic selectors.`,
+  );
 }
 
 await main();

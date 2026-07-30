@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "selectors": [
+    "[data-ad-slot]",
+    "[data-ad-unit]",
+    ".adsbygoogle",
+    "[id^=\"google_ads_\"]",
+    "iframe[src*=\"doubleclick.net\"]",
+    "iframe[src*=\"googlesyndication.com\"]",
+    "[aria-label=\"Advertisement\"]"
+  ],
+  "exceptions": {}
+}
