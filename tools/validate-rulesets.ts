@@ -53,7 +53,7 @@ function isPositiveInteger(value: unknown): value is number {
 }
 
 function isAscii(value: string): boolean {
-  return /^[\x00-\x7F]*$/.test(value);
+  return Array.from(value).every((character) => character.codePointAt(0)! <= 0x7f);
 }
 
 function validateMetadata(
@@ -183,9 +183,7 @@ export function validateRulesets(
   };
 }
 
-export async function validateProjectRulesets(
-  projectRoot: string,
-): Promise<RulesetValidationResult> {
+export async function validateProjectRulesets(projectRoot: string): Promise<RulesetValidationResult> {
   const manifestPath = path.join(projectRoot, 'manifest.json');
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as Record<string, unknown>;
   const dnr = manifest.declarative_net_request;
