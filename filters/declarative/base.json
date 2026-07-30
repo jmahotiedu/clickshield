@@ -61,5 +61,14 @@
       "urlFilter": "||outbrain.com^",
       "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
     }
+  },
+  {
+    "id": 8,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||ads.clickshield.test^",
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+    }
   }
 ]
