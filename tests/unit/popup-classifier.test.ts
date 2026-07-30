@@ -103,10 +103,7 @@ describe('popup classifier evidence scoring', () => {
   it('observes suspicious timing without another strong signal', () => {
     expect(classifyPopup(evidence({ creationDelayMs: 50 }))).toMatchObject({
       outcome: 'observe',
-      reasons: expect.arrayContaining([
-        'suspicious-creation-timing',
-        'no-approved-user-gesture',
-      ]),
+      reasons: expect.arrayContaining(['suspicious-creation-timing', 'no-approved-user-gesture']),
     });
   });
 
