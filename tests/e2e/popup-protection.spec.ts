@@ -39,8 +39,7 @@ test('Strict mode closes a known-ad pop-under and restores opener focus', async 
     context
       .pages()
       .some(
-        (candidate) =>
-          !candidate.isClosed() && candidate.url().includes('ads.clickshield.test'),
+        (candidate) => !candidate.isClosed() && candidate.url().includes('ads.clickshield.test'),
       );
 
   await expect.poll(() => popup.isClosed()).toBe(true);
