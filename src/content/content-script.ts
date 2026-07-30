@@ -7,6 +7,10 @@ import {
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
 import {
+  listenForPopupAttempts,
+  publishModeUpdate,
+} from '../main-world/event-bridge.ts';
+import {
   COSMETIC_STYLE_ATTRIBUTE,
   COSMETIC_STYLE_VALUE,
   createCosmeticCss,
@@ -171,6 +175,22 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.enqueue(records);
   });
 
+  listenForPopupAttempts(window, (attempt) => {
+    if (!attempt.blocked) {
+      return;
+    }
+
+    void chromeApi.runtime
+      .sendMessage({
+        type: 'blocked-action',
+        payload: {
+          category: 'popup',
+          reason: 'no-approved-user-gesture',
+        },
+      })
+      .catch(() => undefined);
+  });
+
   const applyCurrentPolicy = async (): Promise<void> => {
     const version = ++applicationVersion;
     const mode = await policyStore.getMode(globalThis.location.href);
@@ -178,6 +198,7 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
       return;
     }
 
+    publishModeUpdate(window, mode);
     currentSelectors = resolveCosmeticSelectors(
       globalThis.location.hostname,
       mode,
