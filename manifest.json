@@ -16,15 +16,25 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content/content-script.js"],
+      "js": ["main-world/popup-guard.js"],
       "run_at": "document_start",
-      "world": "ISOLATED"
+      "world": "MAIN",
+      "all_frames": true,
+      "match_about_blank": true
     },
     {
       "matches": ["<all_urls>"],
-      "js": ["main-world/popup-guard.js"],
+      "js": ["content/mode-channel.js"],
       "run_at": "document_start",
-      "world": "MAIN"
+      "world": "ISOLATED",
+      "all_frames": true,
+      "match_about_blank": true
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content/content-script.js"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
     }
   ],
   "declarative_net_request": {
