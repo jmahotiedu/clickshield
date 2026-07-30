@@ -54,17 +54,34 @@ async function writeMinimalPackage(root: string): Promise<void> {
   );
   await writeFile(path.join(root, 'popup/popup.css'), 'body {}\n');
   await writeFile(path.join(root, 'popup/popup.js'), 'console.log("popup");\n');
-  await writeFile(path.join(root, 'content/content-script.js'), 'console.log("content");\n');
-  await writeFile(path.join(root, 'main-world/popup-guard.js'), 'console.log("guard");\n');
+  await writeFile(
+    path.join(root, 'content/content-script.js'),
+    'console.log("content");\n',
+  );
+  await writeFile(
+    path.join(root, 'main-world/popup-guard.js'),
+    'console.log("guard");\n',
+  );
   await writeFile(path.join(root, 'filters/declarative/base.json'), '[]\n');
-  await writeFile(path.join(root, 'filters/cosmetic/generic.json'), '{"version":1,"selectors":[],"exceptions":{}}\n');
-  await writeFile(path.join(root, 'filters/cosmetic/site-specific.json'), '{"version":1,"domains":{}}\n');
-  await writeFile(path.join(root, 'filters/metadata.json'), '{"formatVersion":1,"generatedDate":"2026-07-30","rulesets":[]}\n');
+  await writeFile(
+    path.join(root, 'filters/cosmetic/generic.json'),
+    '{"version":1,"selectors":[],"exceptions":{}}\n',
+  );
+  await writeFile(
+    path.join(root, 'filters/cosmetic/site-specific.json'),
+    '{"version":1,"domains":{}}\n',
+  );
+  await writeFile(
+    path.join(root, 'filters/metadata.json'),
+    '{"formatVersion":1,"generatedDate":"2026-07-30","rulesets":[]}\n',
+  );
 }
 
 afterEach(async () => {
   await Promise.all(
-    temporaryDirectories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })),
+    temporaryDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
   );
 });
 
@@ -83,14 +100,19 @@ describe('packaged extension validation', () => {
     const root = await createTemporaryDist();
     await writeMinimalPackage(root);
     await mkdir(path.join(root, 'background'), { recursive: true });
-    await writeFile(path.join(root, 'background/service-worker.js'), 'console.log("worker");\n');
+    await writeFile(
+      path.join(root, 'background/service-worker.js'),
+      'console.log("worker");\n',
+    );
     await writeFile(path.join(root, 'content/debug.ts'), 'export {};\n');
     await writeFile(path.join(root, 'content/content-script.js.map'), '{}\n');
 
     const result = await validateDist(root);
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Forbidden packaged artifact: content/content-script.js.map');
+    expect(result.errors).toContain(
+      'Forbidden packaged artifact: content/content-script.js.map',
+    );
     expect(result.errors).toContain('Forbidden packaged artifact: content/debug.ts');
   });
 
@@ -98,7 +120,10 @@ describe('packaged extension validation', () => {
     const root = await createTemporaryDist();
     await writeMinimalPackage(root);
     await mkdir(path.join(root, 'background'), { recursive: true });
-    await writeFile(path.join(root, 'background/service-worker.js'), 'console.log("worker");\n');
+    await writeFile(
+      path.join(root, 'background/service-worker.js'),
+      'console.log("worker");\n',
+    );
 
     const result = await validateDist(root);
 
