@@ -29,11 +29,19 @@ async function writeMinimalPackage(root: string): Promise<void> {
     content_scripts: [
       {
         matches: ['<all_urls>'],
-        js: ['content/content-script.js'],
+        js: ['main-world/popup-guard.js'],
+        all_frames: true,
+        match_about_blank: true,
       },
       {
         matches: ['<all_urls>'],
-        js: ['main-world/popup-guard.js'],
+        js: ['content/mode-channel.js'],
+        all_frames: true,
+        match_about_blank: true,
+      },
+      {
+        matches: ['<all_urls>'],
+        js: ['content/content-script.js'],
       },
     ],
     declarative_net_request: {
@@ -55,6 +63,7 @@ async function writeMinimalPackage(root: string): Promise<void> {
   await writeFile(path.join(root, 'popup/popup.css'), 'body {}\n');
   await writeFile(path.join(root, 'popup/popup.js'), 'console.log("popup");\n');
   await writeFile(path.join(root, 'content/content-script.js'), 'console.log("content");\n');
+  await writeFile(path.join(root, 'content/mode-channel.js'), 'console.log("bridge");\n');
   await writeFile(path.join(root, 'main-world/popup-guard.js'), 'console.log("guard");\n');
   await writeFile(path.join(root, 'filters/declarative/base.json'), '[]\n');
   await writeFile(
@@ -118,6 +127,7 @@ describe('packaged extension validation', () => {
       errors: [],
       files: expect.arrayContaining([
         'background/service-worker.js',
+        'content/mode-channel.js',
         'manifest.json',
         'popup/popup.html',
       ]),
