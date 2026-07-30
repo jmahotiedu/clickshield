@@ -1,8 +1,4 @@
-import {
-  DEFAULT_SITE_MODE,
-  isSiteMode,
-  type SiteMode,
-} from '../shared/settings.ts';
+import { DEFAULT_SITE_MODE, isSiteMode, type SiteMode } from '../shared/settings.ts';
 
 export const SITE_POLICIES_STORAGE_KEY = 'sitePolicies';
 
