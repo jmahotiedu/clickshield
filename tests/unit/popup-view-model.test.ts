@@ -22,6 +22,23 @@ describe('popup view model', () => {
     });
   });
 
+  it('adds active-tab declarative matches to directly observed blocks', () => {
+    expect(
+      createPopupViewModel({
+        url: 'https://example.com',
+        mode: 'standard',
+        statistics: {
+          blockedRequests: 2,
+          hiddenElements: 1,
+        },
+        matchedNetworkRules: 7,
+      }),
+    ).toMatchObject({
+      blockedRequests: 9,
+      hiddenElements: 1,
+    });
+  });
+
   it('disables protection controls for unsupported browser pages', () => {
     expect(
       createPopupViewModel({
@@ -44,6 +61,7 @@ describe('popup view model', () => {
           blockedRequests: -1,
           hiddenElements: 1.5,
         },
+        matchedNetworkRules: -3,
       }),
     ).toMatchObject({
       blockedRequests: 0,
