@@ -4,10 +4,6 @@ test.beforeEach(async ({ context, extensionId }) => {
   await setSiteMode(context, extensionId, 'player.clickshield.test', 'strict');
 });
 
-function hasOpenOrdinaryPopup(context: Parameters<typeof test>[0] extends never ? never : never): never {
-  throw new Error(String(context));
-}
-
 test('Ctrl-click and middle-click preserve legitimate new tabs', async ({ context, page }) => {
   await page.goto(`${FIXTURE_ORIGIN}/popup-protection`);
 
@@ -77,10 +73,7 @@ test('page JavaScript cannot forge a mode update', async ({ context, page }) => 
 test('Strict mode protects window.open inside a third-party iframe', async ({ context, page }) => {
   await page.goto(`${FIXTURE_ORIGIN}/iframe-popup-host`);
 
-  await page
-    .frameLocator('#popup-frame')
-    .locator('#trigger-frame-popup')
-    .click();
+  await page.frameLocator('#popup-frame').locator('#trigger-frame-popup').click();
   await page.waitForTimeout(1_200);
 
   expect(
