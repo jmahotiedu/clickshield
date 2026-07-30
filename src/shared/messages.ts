@@ -25,6 +25,10 @@ export interface PopupAttemptMessage {
     url: string;
     target: string | null;
     timestamp: number;
+    blocked: boolean;
+    approvedGesture: boolean;
+    explicitNewContext: boolean;
+    syntheticEvent: boolean;
   };
 }
 
@@ -107,12 +111,29 @@ function isClickContextPayload(value: unknown): value is ClickContextMessage['pa
 }
 
 function isPopupAttemptPayload(value: unknown): value is PopupAttemptMessage['payload'] {
-  if (!isRecord(value) || !hasOnlyKeys(value, ['url', 'target', 'timestamp'])) {
+  if (
+    !isRecord(value) ||
+    !hasOnlyKeys(value, [
+      'url',
+      'target',
+      'timestamp',
+      'blocked',
+      'approvedGesture',
+      'explicitNewContext',
+      'syntheticEvent',
+    ])
+  ) {
     return false;
   }
 
   return (
-    typeof value.url === 'string' && isStringOrNull(value.target) && isFiniteNumber(value.timestamp)
+    typeof value.url === 'string' &&
+    isStringOrNull(value.target) &&
+    isFiniteNumber(value.timestamp) &&
+    isBoolean(value.blocked) &&
+    isBoolean(value.approvedGesture) &&
+    isBoolean(value.explicitNewContext) &&
+    isBoolean(value.syntheticEvent)
   );
 }
 
