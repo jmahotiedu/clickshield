@@ -10,6 +10,7 @@ export interface PopupViewModelInput {
   url: string | null | undefined;
   mode: SiteMode;
   statistics?: Partial<PopupStatistics>;
+  matchedNetworkRules?: number;
 }
 
 export interface PopupViewModel {
@@ -28,12 +29,14 @@ function toNonNegativeInteger(value: unknown): number {
 export function createPopupViewModel(input: PopupViewModelInput): PopupViewModel {
   const hostname =
     input.url === null || input.url === undefined ? null : normalizeHostname(input.url);
+  const observedBlocks = toNonNegativeInteger(input.statistics?.blockedRequests);
+  const matchedNetworkRules = toNonNegativeInteger(input.matchedNetworkRules);
 
   return {
     supported: hostname !== null,
     hostname: hostname ?? 'Unsupported browser page',
     mode: hostname === null ? 'off' : input.mode,
-    blockedRequests: toNonNegativeInteger(input.statistics?.blockedRequests),
+    blockedRequests: observedBlocks + matchedNetworkRules,
     hiddenElements: toNonNegativeInteger(input.statistics?.hiddenElements),
     strictDescription:
       'Strict mode also blocks suspicious pop-ups, pop-unders, and invisible click overlays.',

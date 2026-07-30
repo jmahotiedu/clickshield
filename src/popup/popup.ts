@@ -3,10 +3,9 @@ import {
   SitePolicyStore,
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
+import { TAB_STATISTICS_STORAGE_KEY } from '../background/statistics-store.ts';
 import { isSiteMode, type SiteMode } from '../shared/settings.ts';
 import { createPopupViewModel, type PopupStatistics } from './view-model.ts';
-
-const TAB_STATISTICS_STORAGE_KEY = 'tabStatistics';
 
 interface BrowserTab {
   id?: number;
@@ -17,12 +16,19 @@ interface ChromeTabsLike {
   query(queryInfo: { active: true; currentWindow: true }): Promise<BrowserTab[]>;
 }
 
+interface ChromeDeclarativeNetRequestLike {
+  getMatchedRules(filter: { tabId: number }): Promise<{
+    rulesMatchedInfo: unknown[];
+  }>;
+}
+
 interface ChromeApiLike {
   tabs: ChromeTabsLike;
   storage: {
     sync: ChromeStorageAreaLike;
     local: ChromeStorageAreaLike;
   };
+  declarativeNetRequest: ChromeDeclarativeNetRequestLike;
 }
 
 interface TabStatisticsMap {
@@ -55,6 +61,22 @@ async function readStatistics(
   return statistics ?? {};
 }
 
+async function readMatchedNetworkRules(
+  declarativeNetRequest: ChromeDeclarativeNetRequestLike,
+  tabId: number | undefined,
+): Promise<number> {
+  if (tabId === undefined) {
+    return 0;
+  }
+
+  try {
+    const result = await declarativeNetRequest.getMatchedRules({ tabId });
+    return Array.isArray(result.rulesMatchedInfo) ? result.rulesMatchedInfo.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
 function renderMode(mode: SiteMode): void {
   const radio = document.querySelector<HTMLInputElement>(`input[name="mode"][value="${mode}"]`);
   if (radio !== null) {
@@ -67,11 +89,15 @@ async function initializePopup(chromeApi: ChromeApiLike): Promise<void> {
   const policyStore = new SitePolicyStore(new ChromeSyncSitePolicyStorage(chromeApi.storage.sync));
   const requestedUrl = activeTab?.url;
   const mode = requestedUrl === undefined ? 'off' : await policyStore.getMode(requestedUrl);
-  const statistics = await readStatistics(chromeApi.storage.local, activeTab?.id);
+  const [statistics, matchedNetworkRules] = await Promise.all([
+    readStatistics(chromeApi.storage.local, activeTab?.id),
+    readMatchedNetworkRules(chromeApi.declarativeNetRequest, activeTab?.id),
+  ]);
   const viewModel = createPopupViewModel({
     url: requestedUrl,
     mode,
     statistics,
+    matchedNetworkRules,
   });
 
   const currentSite = getRequiredElement<HTMLParagraphElement>('current-site');
