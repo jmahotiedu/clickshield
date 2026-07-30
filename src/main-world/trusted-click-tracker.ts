@@ -1,4 +1,4 @@
-import { PopupTokenStore } from './popup-token-store.ts';
+import type { PopupTokenStore } from './popup-token-store.ts';
 
 export type GestureSource = 'pointer' | 'keyboard';
 
