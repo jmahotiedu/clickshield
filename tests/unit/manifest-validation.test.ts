@@ -15,6 +15,18 @@ const validManifest: ExtensionManifest = {
   content_scripts: [
     {
       matches: ['<all_urls>'],
+      js: ['main-world/popup-guard.js'],
+      all_frames: true,
+      match_about_blank: true,
+    },
+    {
+      matches: ['<all_urls>'],
+      js: ['content/mode-channel.js'],
+      all_frames: true,
+      match_about_blank: true,
+    },
+    {
+      matches: ['<all_urls>'],
       js: ['content/content-script.js'],
     },
   ],
@@ -39,10 +51,40 @@ describe('manifest validation', () => {
       referencedFiles: [
         'background/service-worker.js',
         'content/content-script.js',
+        'content/mode-channel.js',
         'filters/declarative/base.json',
+        'main-world/popup-guard.js',
         'popup/popup.html',
       ],
     });
+  });
+
+  it('requires the guard and authenticated bridge in every frame', () => {
+    const result = validateManifest({
+      ...validManifest,
+      content_scripts: [
+        {
+          matches: ['<all_urls>'],
+          js: ['main-world/popup-guard.js'],
+          all_frames: false,
+          match_about_blank: true,
+        },
+        {
+          matches: ['<all_urls>'],
+          js: ['content/mode-channel.js'],
+          all_frames: true,
+          match_about_blank: false,
+        },
+      ],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        'main-world/popup-guard.js must set all_frames to true.',
+        'content/mode-channel.js must set match_about_blank to true.',
+      ]),
+    );
   });
 
   it('rejects a manifest that is not Manifest V3', () => {
@@ -98,6 +140,8 @@ describe('manifest validation', () => {
         'background.service_worker must be a local relative path.',
         'content_scripts[0].js[0] must be a local relative path.',
         'declarative_net_request.rule_resources[0].path must be a local relative path.',
+        'Missing required protection script: main-world/popup-guard.js',
+        'Missing required protection script: content/mode-channel.js',
       ]),
     );
   });
