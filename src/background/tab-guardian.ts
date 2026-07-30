@@ -180,9 +180,7 @@ export class TabGuardian {
       this.options.tabs.get(createdTab.id),
     ]);
     const destinationUrl =
-      refreshedCreatedTab?.pendingUrl ??
-      refreshedCreatedTab?.url ??
-      initialDestination;
+      refreshedCreatedTab?.pendingUrl ?? refreshedCreatedTab?.url ?? initialDestination;
     const correlation = await this.options.correlations.consumeRecentAttempt(
       sourceTabId,
       destinationUrl,
