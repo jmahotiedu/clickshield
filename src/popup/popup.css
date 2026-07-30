@@ -1,0 +1,15 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  min-width: 18rem;
+  margin: 0;
+  padding: 1rem;
+}
+
+h1,
+p {
+  margin-block: 0 0.75rem;
+}
