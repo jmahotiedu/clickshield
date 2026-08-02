@@ -32,12 +32,14 @@ async function writeMinimalPackage(root: string): Promise<void> {
         js: ['main-world/popup-guard.js'],
         all_frames: true,
         match_about_blank: true,
+        match_origin_as_fallback: true,
       },
       {
         matches: ['<all_urls>'],
         js: ['content/mode-channel.js'],
         all_frames: true,
         match_about_blank: true,
+        match_origin_as_fallback: true,
       },
       {
         matches: ['<all_urls>'],

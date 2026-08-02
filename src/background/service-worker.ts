@@ -59,6 +59,7 @@ interface ChromeTabsLike {
   query(queryInfo: { active: boolean; windowId: number }): Promise<ChromeTabLike[]>;
   remove(tabId: number): Promise<void>;
   update(tabId: number, updateProperties: { active: boolean }): Promise<ChromeTabLike>;
+  sendMessage(tabId: number, message: unknown): Promise<unknown>;
 }
 
 interface ChromeWindowsLike {
@@ -159,7 +160,7 @@ function createWindowAdapter(chromeWindows: ChromeWindowsLike): WindowAdapter {
   };
 }
 
-function installServiceWorker(chromeApi: ChromeApiLike): void {
+export function installServiceWorker(chromeApi: ChromeApiLike): void {
   const statisticsStore = new StatisticsStore(
     new ChromeLocalStatisticsStorage(chromeApi.storage.local),
   );
@@ -214,7 +215,17 @@ function installServiceWorker(chromeApi: ChromeApiLike): void {
 
     if (message.type === 'popup-attempt') {
       const sourceTabId = getMessageTabId(sender, undefined);
-      if (sourceTabId === null || message.payload.blocked) {
+      if (sourceTabId === null) {
+        return;
+      }
+
+      if (message.payload.blocked) {
+        void chromeApi.tabs
+          .sendMessage(sourceTabId, {
+            type: 'recent-blocked-popup',
+            payload: { timestamp: message.payload.timestamp },
+          })
+          .catch(() => undefined);
         return;
       }
 

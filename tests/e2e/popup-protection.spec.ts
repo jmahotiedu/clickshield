@@ -55,6 +55,20 @@ test('page JavaScript cannot forge a mode update', async ({ context, page }) => 
         detail: { mode: 'off' },
       }),
     );
+
+    const forged = new MessageChannel();
+    window.postMessage({ type: 'clickshield:bridge-bootstrap' }, '*', [forged.port2]);
+    forged.port1.start();
+    forged.port1.postMessage({ type: 'clickshield:mode-update', mode: 'off' });
+
+    const replay = new MessageChannel();
+    window.postMessage(
+      { type: 'clickshield:bridge-bootstrap', token: 'clickshield-bridge-v1' },
+      '*',
+      [replay.port2],
+    );
+    replay.port1.start();
+    replay.port1.postMessage({ type: 'clickshield:mode-update', mode: 'off' });
   });
 
   await page.locator('#trigger-ordinary-popup').click();

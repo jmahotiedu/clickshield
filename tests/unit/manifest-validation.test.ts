@@ -18,12 +18,14 @@ const validManifest: ExtensionManifest = {
       js: ['main-world/popup-guard.js'],
       all_frames: true,
       match_about_blank: true,
+      match_origin_as_fallback: true,
     },
     {
       matches: ['<all_urls>'],
       js: ['content/mode-channel.js'],
       all_frames: true,
       match_about_blank: true,
+      match_origin_as_fallback: true,
     },
     {
       matches: ['<all_urls>'],
@@ -68,12 +70,14 @@ describe('manifest validation', () => {
           js: ['main-world/popup-guard.js'],
           all_frames: false,
           match_about_blank: true,
+          match_origin_as_fallback: true,
         },
         {
           matches: ['<all_urls>'],
           js: ['content/mode-channel.js'],
           all_frames: true,
           match_about_blank: false,
+          match_origin_as_fallback: false,
         },
       ],
     });
@@ -83,6 +87,7 @@ describe('manifest validation', () => {
       expect.arrayContaining([
         'main-world/popup-guard.js must set all_frames to true.',
         'content/mode-channel.js must set match_about_blank to true.',
+        'content/mode-channel.js must set match_origin_as_fallback to true.',
       ]),
     );
   });

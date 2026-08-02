@@ -62,6 +62,12 @@ const validMessages: ExtensionMessage[] = [
       hiddenElements: 2,
     },
   },
+  {
+    type: 'recent-blocked-popup',
+    payload: {
+      timestamp: 1_700_000_123,
+    },
+  },
 ];
 
 describe('site-mode contracts', () => {

@@ -11,6 +11,11 @@ import {
   isPopupAttemptMessage,
   type SanitizedPopupAttempt,
 } from '../main-world/event-bridge.ts';
+import { BRIDGE_AUTH_TOKEN } from '../shared/bridge-auth.ts';
+import {
+  clearBlockedPopupTimestamp,
+  recordBlockedPopupTimestamp,
+} from '../shared/blocked-popup-signal.ts';
 import { hasOnlyKeys, isRecord } from '../shared/types.ts';
 
 interface ChromeRuntimeLike {
@@ -64,6 +69,10 @@ async function forwardPopupAttempt(
   chromeApi: ChromeApiLike,
   attempt: SanitizedPopupAttempt,
 ): Promise<void> {
+  if (attempt.blocked) {
+    recordBlockedPopupTimestamp(attempt.timestamp);
+  }
+
   const messages: unknown[] = [
     {
       type: 'popup-attempt',
@@ -103,6 +112,10 @@ export function installAuthenticatedModeChannel(
         return;
       }
 
+      if (mode !== 'strict') {
+        clearBlockedPopupTimestamp();
+      }
+
       channel.port1.postMessage({ type: MODE_UPDATE_MESSAGE, mode });
     } catch {
       // Keep the MAIN-world guard pending and fail-closed when policy resolution is unavailable.
@@ -132,7 +145,9 @@ export function installAuthenticatedModeChannel(
   };
 
   chromeApi.storage.onChanged.addListener(handleStorageChange);
-  target.postMessage({ type: BRIDGE_BOOTSTRAP_MESSAGE }, '*', [channel.port2]);
+  target.postMessage({ type: BRIDGE_BOOTSTRAP_MESSAGE, token: BRIDGE_AUTH_TOKEN }, '*', [
+    channel.port2,
+  ]);
 
   return () => {
     disposed = true;

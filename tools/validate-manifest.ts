@@ -9,6 +9,7 @@ export interface ManifestContentScript {
   world?: unknown;
   all_frames?: unknown;
   match_about_blank?: unknown;
+  match_origin_as_fallback?: unknown;
 }
 
 export interface ExtensionManifest {
@@ -82,6 +83,10 @@ function collectScriptPaths(contentScripts: unknown, errors: string[]): string[]
 
       if (ALL_FRAME_PROTECTION_SCRIPTS.has(scriptPath) && entry.match_about_blank !== true) {
         errors.push(`${scriptPath} must set match_about_blank to true.`);
+      }
+
+      if (ALL_FRAME_PROTECTION_SCRIPTS.has(scriptPath) && entry.match_origin_as_fallback !== true) {
+        errors.push(`${scriptPath} must set match_origin_as_fallback to true.`);
       }
 
       paths.push(scriptPath);

@@ -64,12 +64,20 @@ export interface StatisticsUpdateMessage {
   };
 }
 
+export interface RecentBlockedPopupMessage {
+  type: 'recent-blocked-popup';
+  payload: {
+    timestamp: number;
+  };
+}
+
 export type ExtensionMessage =
   | ClickContextMessage
   | PopupAttemptMessage
   | BlockedActionMessage
   | SettingsRequestMessage
-  | StatisticsUpdateMessage;
+  | StatisticsUpdateMessage
+  | RecentBlockedPopupMessage;
 
 function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
@@ -180,6 +188,21 @@ function isStatisticsUpdatePayload(value: unknown): value is StatisticsUpdateMes
   );
 }
 
+function isRecentBlockedPopupPayload(
+  value: unknown,
+): value is RecentBlockedPopupMessage['payload'] {
+  return isRecord(value) && hasOnlyKeys(value, ['timestamp']) && isFiniteNumber(value.timestamp);
+}
+
+export function isRecentBlockedPopupMessage(value: unknown): value is RecentBlockedPopupMessage {
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ['type', 'payload']) &&
+    value.type === 'recent-blocked-popup' &&
+    isRecentBlockedPopupPayload(value.payload)
+  );
+}
+
 export function isExtensionMessage(value: unknown): value is ExtensionMessage {
   if (!isRecord(value) || !hasOnlyKeys(value, ['type', 'payload'])) {
     return false;
@@ -196,6 +219,8 @@ export function isExtensionMessage(value: unknown): value is ExtensionMessage {
       return isSettingsRequestPayload(value.payload);
     case 'statistics-update':
       return isStatisticsUpdatePayload(value.payload);
+    case 'recent-blocked-popup':
+      return isRecentBlockedPopupPayload(value.payload);
     default:
       return false;
   }

@@ -1,3 +1,4 @@
+import { BRIDGE_AUTH_TOKEN } from '../shared/bridge-auth.ts';
 import { isSiteMode, type SiteMode } from '../shared/settings.ts';
 import { hasOnlyKeys, isRecord } from '../shared/types.ts';
 
@@ -28,7 +29,12 @@ interface WindowMessageTargetLike {
 }
 
 function isBootstrapMessage(value: unknown): boolean {
-  return isRecord(value) && hasOnlyKeys(value, ['type']) && value.type === BRIDGE_BOOTSTRAP_MESSAGE;
+  return (
+    isRecord(value) &&
+    hasOnlyKeys(value, ['type', 'token']) &&
+    value.type === BRIDGE_BOOTSTRAP_MESSAGE &&
+    value.token === BRIDGE_AUTH_TOKEN
+  );
 }
 
 export function isModeUpdateMessage(

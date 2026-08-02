@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { BRIDGE_AUTH_TOKEN } from '../../src/shared/bridge-auth.ts';
 import {
   BRIDGE_BOOTSTRAP_MESSAGE,
   BRIDGE_READY_MESSAGE,
@@ -99,7 +100,7 @@ describe('authenticated MAIN-world bridge', () => {
 
     const bridge = installMainWorldBridge(target, onModeUpdate);
     target.emitMessage(
-      { type: BRIDGE_BOOTSTRAP_MESSAGE },
+      { type: BRIDGE_BOOTSTRAP_MESSAGE, token: BRIDGE_AUTH_TOKEN },
       [mainPort as unknown as MessagePort],
       target,
     );
@@ -123,12 +124,53 @@ describe('authenticated MAIN-world bridge', () => {
 
     installMainWorldBridge(target, onModeUpdate);
     target.emitMessage(
-      { type: BRIDGE_BOOTSTRAP_MESSAGE },
+      { type: BRIDGE_BOOTSTRAP_MESSAGE, token: BRIDGE_AUTH_TOKEN },
       [mainPort as unknown as MessagePort],
       {},
     );
     isolatedPort.postMessage({ type: MODE_UPDATE_MESSAGE, mode: 'off' });
 
     expect(onModeUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rejects bootstrap messages without the extension auth token', () => {
+    const target = new FakeWindowTarget();
+    const onModeUpdate = vi.fn();
+    const [isolatedPort, mainPort] = createPortPair();
+
+    installMainWorldBridge(target, onModeUpdate);
+    target.emitMessage(
+      { type: BRIDGE_BOOTSTRAP_MESSAGE },
+      [mainPort as unknown as MessagePort],
+      target,
+    );
+    isolatedPort.postMessage({ type: MODE_UPDATE_MESSAGE, mode: 'off' });
+
+    expect(onModeUpdate).not.toHaveBeenCalled();
+  });
+
+  it('rejects a second same-window bootstrap after the authenticated port connects', () => {
+    const target = new FakeWindowTarget();
+    const onModeUpdate = vi.fn();
+    const [isolatedPort, mainPort] = createPortPair();
+    const [hostileIsolatedPort, hostileMainPort] = createPortPair();
+
+    installMainWorldBridge(target, onModeUpdate);
+    target.emitMessage(
+      { type: BRIDGE_BOOTSTRAP_MESSAGE, token: BRIDGE_AUTH_TOKEN },
+      [mainPort as unknown as MessagePort],
+      target,
+    );
+    isolatedPort.postMessage({ type: MODE_UPDATE_MESSAGE, mode: 'strict' });
+
+    target.emitMessage(
+      { type: BRIDGE_BOOTSTRAP_MESSAGE, token: BRIDGE_AUTH_TOKEN },
+      [hostileMainPort as unknown as MessagePort],
+      target,
+    );
+    hostileIsolatedPort.postMessage({ type: MODE_UPDATE_MESSAGE, mode: 'off' });
+
+    expect(onModeUpdate).toHaveBeenCalledTimes(1);
+    expect(onModeUpdate).toHaveBeenLastCalledWith('strict');
   });
 });

@@ -6,6 +6,12 @@ import {
   SitePolicyStore,
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
+import {
+  clearBlockedPopupTimestamp,
+  getLastBlockedPopupTimestamp,
+  recordBlockedPopupTimestamp,
+} from '../shared/blocked-popup-signal.ts';
+import { isRecentBlockedPopupMessage } from '../shared/messages.ts';
 import type { SiteMode } from '../shared/settings.ts';
 import {
   COSMETIC_STYLE_ATTRIBUTE,
@@ -32,6 +38,9 @@ import {
 
 interface ChromeRuntimeLike {
   sendMessage(message: unknown): Promise<unknown>;
+  onMessage: {
+    addListener(listener: (message: unknown) => void): void;
+  };
 }
 
 interface ChromeStorageChangeLike {
@@ -205,7 +214,9 @@ function processOverlays(chromeApi: ChromeApiLike, elements: Iterable<ElementLik
       continue;
     }
 
-    const assessment = scoreOverlay(createOverlaySnapshot(element, timestamp, null));
+    const assessment = scoreOverlay(
+      createOverlaySnapshot(element, timestamp, getLastBlockedPopupTimestamp()),
+    );
     const action = overlayMitigator.mitigate(
       element as unknown as OverlayElementLike,
       assessment,
@@ -243,6 +254,12 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.enqueue(records);
   });
 
+  chromeApi.runtime.onMessage.addListener((message) => {
+    if (isRecentBlockedPopupMessage(message)) {
+      recordBlockedPopupTimestamp(message.payload.timestamp);
+    }
+  });
+
   const applyCurrentPolicy = async (): Promise<void> => {
     const version = ++applicationVersion;
     const mode = await policyStore.getMode(globalThis.location.href);
@@ -256,6 +273,7 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
 
     if (mode !== 'strict') {
       overlayMitigator.restoreAll();
+      clearBlockedPopupTimestamp();
     }
 
     currentSelectors = resolveCosmeticSelectors(
