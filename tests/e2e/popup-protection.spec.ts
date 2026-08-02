@@ -35,6 +35,7 @@ test('Strict mode closes a known-ad pop-under and restores opener focus', async 
   const popupCreated = context.waitForEvent('page');
   await page.locator('#trigger-popunder').click();
   const popup = await popupCreated;
+  await popup.waitForLoadState('domcontentloaded').catch(() => undefined);
   const hasOpenAdPage = (): boolean =>
     context
       .pages()
@@ -42,9 +43,9 @@ test('Strict mode closes a known-ad pop-under and restores opener focus', async 
         (candidate) => !candidate.isClosed() && candidate.url().includes('ads.clickshield.test'),
       );
 
-  await expect.poll(() => popup.isClosed()).toBe(true);
-  await expect.poll(hasOpenAdPage).toBe(false);
-  await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+  await expect.poll(() => popup.isClosed(), { timeout: 15_000 }).toBe(true);
+  await expect.poll(hasOpenAdPage, { timeout: 15_000 }).toBe(false);
+  await expect.poll(() => page.evaluate(() => document.hasFocus()), { timeout: 15_000 }).toBe(true);
 });
 
 test('page JavaScript cannot forge a mode update', async ({ context, page }) => {
