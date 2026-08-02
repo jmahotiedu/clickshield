@@ -6,7 +6,12 @@ import {
   SitePolicyStore,
   type ChromeStorageAreaLike,
 } from '../background/site-policy-store.ts';
-import { listenForPopupAttempts, publishModeUpdate } from '../main-world/event-bridge.ts';
+import {
+  clearBlockedPopupTimestamp,
+  getLastBlockedPopupTimestamp,
+  recordBlockedPopupTimestamp,
+} from '../shared/blocked-popup-signal.ts';
+import { isRecentBlockedPopupMessage } from '../shared/messages.ts';
 import type { SiteMode } from '../shared/settings.ts';
 import {
   COSMETIC_STYLE_ATTRIBUTE,
@@ -33,6 +38,9 @@ import {
 
 interface ChromeRuntimeLike {
   sendMessage(message: unknown): Promise<unknown>;
+  onMessage: {
+    addListener(listener: (message: unknown) => void): void;
+  };
 }
 
 interface ChromeStorageChangeLike {
@@ -62,7 +70,6 @@ const overlayMitigator = new OverlayMitigator();
 let currentSelectors: string[] = [];
 let currentStyle: HTMLStyleElement | null = null;
 let currentMode: SiteMode = 'off';
-let lastBlockedPopupTimestamp: number | null = null;
 let applicationVersion = 0;
 
 function waitForDocumentReady(): Promise<void> {
@@ -208,7 +215,7 @@ function processOverlays(chromeApi: ChromeApiLike, elements: Iterable<ElementLik
     }
 
     const assessment = scoreOverlay(
-      createOverlaySnapshot(element, timestamp, lastBlockedPopupTimestamp),
+      createOverlaySnapshot(element, timestamp, getLastBlockedPopupTimestamp()),
     );
     const action = overlayMitigator.mitigate(
       element as unknown as OverlayElementLike,
@@ -247,39 +254,10 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.enqueue(records);
   });
 
-  listenForPopupAttempts(window, (attempt) => {
-    if (attempt.blocked) {
-      lastBlockedPopupTimestamp = attempt.timestamp;
+  chromeApi.runtime.onMessage.addListener((message) => {
+    if (isRecentBlockedPopupMessage(message)) {
+      recordBlockedPopupTimestamp(message.payload.timestamp);
     }
-
-    const messages: unknown[] = [
-      {
-        type: 'popup-attempt',
-        payload: {
-          url: attempt.url,
-          target: attempt.target,
-          timestamp: attempt.timestamp,
-          blocked: attempt.blocked,
-          approvedGesture: attempt.approvedGesture,
-          explicitNewContext: attempt.explicitNewContext,
-          syntheticEvent: attempt.syntheticEvent,
-        },
-      },
-    ];
-
-    if (attempt.blocked) {
-      messages.push({
-        type: 'blocked-action',
-        payload: {
-          category: 'popup',
-          reason: 'no-approved-user-gesture',
-        },
-      });
-    }
-
-    void Promise.all(messages.map((message) => chromeApi.runtime.sendMessage(message))).catch(
-      () => undefined,
-    );
   });
 
   const applyCurrentPolicy = async (): Promise<void> => {
@@ -292,11 +270,10 @@ async function initializeCosmeticFiltering(chromeApi: ChromeApiLike): Promise<vo
     processor.disconnect();
     lifecycle.setEnabled(false, document.documentElement);
     currentMode = mode;
-    publishModeUpdate(window, mode);
 
     if (mode !== 'strict') {
       overlayMitigator.restoreAll();
-      lastBlockedPopupTimestamp = null;
+      clearBlockedPopupTimestamp();
     }
 
     currentSelectors = resolveCosmeticSelectors(

@@ -2,3 +2,4 @@ plans/**/*.md
 dist/
 coverage/
 node_modules/
+.serena/

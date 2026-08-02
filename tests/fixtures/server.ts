@@ -105,9 +105,47 @@ document.head.append(script);`,
 <a id="legitimate-link" href="http://player.clickshield.test:${port}/destination" target="_blank" rel="opener">Legitimate article</a>
 <a id="auth-link" href="http://auth.clickshield.test:${port}/oauth/authorize" target="_blank" rel="opener">Sign in</a>
 <a id="popunder-link" href="http://ads.clickshield.test:${port}/ad-popup" target="_blank" rel="opener" hidden>Hidden ad destination</a>
-<button id="trigger-popunder" type="button">Trigger pop-under</button>`,
+<button id="trigger-popunder" type="button">Trigger pop-under</button>
+<button id="trigger-ordinary-popup" type="button">Trigger ordinary popup</button>`,
         `document.querySelector('#trigger-popunder').addEventListener('click', () => {
   document.querySelector('#popunder-link').click();
+});
+document.querySelector('#trigger-ordinary-popup').addEventListener('click', () => {
+  setTimeout(() => {
+    window.open('http://ordinary.clickshield.test:${port}/ordinary-popup', '_blank');
+  }, 900);
+});`,
+      ),
+    );
+    return;
+  }
+
+  if (url.pathname === '/iframe-popup-host') {
+    send(
+      response,
+      200,
+      'text/html; charset=utf-8',
+      html(
+        'Iframe popup host',
+        `<h1>Iframe popup host</h1>
+<iframe id="popup-frame" src="http://frame.clickshield.test:${port}/iframe-popup-frame"></iframe>`,
+      ),
+    );
+    return;
+  }
+
+  if (url.pathname === '/iframe-popup-frame') {
+    send(
+      response,
+      200,
+      'text/html; charset=utf-8',
+      html(
+        'Iframe popup frame',
+        '<button id="trigger-frame-popup" type="button">Trigger frame popup</button>',
+        `document.querySelector('#trigger-frame-popup').addEventListener('click', () => {
+  setTimeout(() => {
+    window.open('http://ordinary.clickshield.test:${port}/ordinary-popup', '_blank');
+  }, 900);
 });`,
       ),
     );
@@ -135,7 +173,8 @@ document.head.append(script);`,
   if (
     url.pathname === '/destination' ||
     url.pathname === '/oauth/authorize' ||
-    url.pathname === '/ad-popup'
+    url.pathname === '/ad-popup' ||
+    url.pathname === '/ordinary-popup'
   ) {
     send(
       response,

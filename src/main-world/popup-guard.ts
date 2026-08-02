@@ -1,4 +1,4 @@
-import { listenForModeUpdates, publishPopupAttempt } from './event-bridge.ts';
+import { installMainWorldBridge } from './event-bridge.ts';
 import { PopupTokenStore } from './popup-token-store.ts';
 import {
   installTrustedGestureTracker,
@@ -6,6 +6,8 @@ import {
 } from './trusted-click-tracker.ts';
 import type { SanitizedPopupAttempt } from './event-bridge.ts';
 import type { SiteMode } from '../shared/settings.ts';
+
+export type GuardMode = SiteMode | 'pending';
 
 export type WindowOpenLike<TResult> = (
   this: unknown,
@@ -15,7 +17,7 @@ export type WindowOpenLike<TResult> = (
 ) => TResult;
 
 export interface GuardedWindowOpenOptions {
-  getMode(): SiteMode;
+  getMode(): GuardMode;
   consumeGesture(): ApprovedPopupGesture | null;
   publishAttempt(attempt: SanitizedPopupAttempt): void;
   clock(): number;
@@ -82,7 +84,7 @@ export function createGuardedWindowOpen<TResult>(
     try {
       const mode = options.getMode();
       const gesture = mode === 'strict' ? options.consumeGesture() : null;
-      blocked = mode === 'strict' && gesture === null;
+      blocked = mode === 'pending' || (mode === 'strict' && gesture === null);
       options.publishAttempt(
         sanitizePopupAttempt(
           args[0],
@@ -107,21 +109,21 @@ export function createGuardedWindowOpen<TResult>(
 
 if (typeof window !== 'undefined') {
   const tokenStore = new PopupTokenStore<ApprovedPopupGesture>(() => performance.now(), 750);
-  let currentMode: SiteMode = 'standard';
-
-  listenForModeUpdates(window, (mode) => {
+  let currentMode: GuardMode = 'pending';
+  const bridge = installMainWorldBridge(window, (mode) => {
     currentMode = mode;
     if (mode !== 'strict') {
       tokenStore.clear();
     }
   });
+
   installTrustedGestureTracker(window, tokenStore);
 
   const originalOpen = window.open;
   window.open = createGuardedWindowOpen(originalOpen, {
     getMode: () => currentMode,
     consumeGesture: () => tokenStore.consume(),
-    publishAttempt: (attempt) => publishPopupAttempt(window, attempt),
+    publishAttempt: (attempt) => bridge.publishPopupAttempt(attempt),
     clock: () => Date.now(),
     baseUrl: () => window.location.href,
   }) as typeof window.open;

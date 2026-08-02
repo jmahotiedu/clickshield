@@ -7,6 +7,9 @@ export interface ManifestContentScript {
   js?: unknown;
   run_at?: unknown;
   world?: unknown;
+  all_frames?: unknown;
+  match_about_blank?: unknown;
+  match_origin_as_fallback?: unknown;
 }
 
 export interface ExtensionManifest {
@@ -26,6 +29,10 @@ export interface ManifestValidationResult {
 }
 
 const REMOTE_URL_PATTERN = /^https?:\/\//i;
+const ALL_FRAME_PROTECTION_SCRIPTS = new Set([
+  'main-world/popup-guard.js',
+  'content/mode-channel.js',
+]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -69,9 +76,28 @@ function collectScriptPaths(contentScripts: unknown, errors: string[]): string[]
         errors.push(`content_scripts[${index}].js[${scriptIndex}] must be a local relative path.`);
         return;
       }
+
+      if (ALL_FRAME_PROTECTION_SCRIPTS.has(scriptPath) && entry.all_frames !== true) {
+        errors.push(`${scriptPath} must set all_frames to true.`);
+      }
+
+      if (ALL_FRAME_PROTECTION_SCRIPTS.has(scriptPath) && entry.match_about_blank !== true) {
+        errors.push(`${scriptPath} must set match_about_blank to true.`);
+      }
+
+      if (ALL_FRAME_PROTECTION_SCRIPTS.has(scriptPath) && entry.match_origin_as_fallback !== true) {
+        errors.push(`${scriptPath} must set match_origin_as_fallback to true.`);
+      }
+
       paths.push(scriptPath);
     });
   });
+
+  for (const requiredScript of ALL_FRAME_PROTECTION_SCRIPTS) {
+    if (!paths.includes(requiredScript)) {
+      errors.push(`Missing required protection script: ${requiredScript}`);
+    }
+  }
 
   return paths;
 }

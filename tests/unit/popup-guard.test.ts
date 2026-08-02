@@ -54,6 +54,34 @@ describe('guarded window.open', () => {
     });
   });
 
+  it('fails closed before the first authenticated policy update', () => {
+    const original = vi.fn(() => ({ opened: true }));
+    const consumeGesture = vi.fn(() => ({
+      explicitNewContext: true,
+      source: 'pointer' as const,
+      timestamp: 990,
+      href: 'https://example.com/path',
+    }));
+    const publishAttempt = vi.fn();
+    const guarded = createGuardedWindowOpen(
+      original,
+      strictOptions({ getMode: () => 'pending', consumeGesture, publishAttempt }),
+    );
+
+    expect(guarded('https://example.com/path', '_blank')).toBeNull();
+    expect(original).not.toHaveBeenCalled();
+    expect(consumeGesture).not.toHaveBeenCalled();
+    expect(publishAttempt).toHaveBeenCalledWith({
+      url: 'https://example.com/path',
+      target: '_blank',
+      timestamp: 1_000,
+      blocked: true,
+      approvedGesture: false,
+      explicitNewContext: false,
+      syntheticEvent: false,
+    });
+  });
+
   it('allows a Strict-mode open with a valid one-use gesture and publishes the gesture summary', () => {
     const original = vi.fn(() => ({ opened: true }));
     const publishAttempt = vi.fn();

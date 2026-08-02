@@ -4,5 +4,6 @@ coverage/
 output/playwright/
 playwright-report/
 test-results/
+.serena/
 *.log
 .DS_Store
