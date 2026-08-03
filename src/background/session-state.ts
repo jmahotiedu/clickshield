@@ -1,4 +1,6 @@
 import { isPopupDecision } from '../shared/decisions.ts';
+import type { ModifierState } from '../shared/messages.ts';
+import type { ClickCorrelationContext } from '../shared/native-click-context.ts';
 import type {
   PopupCorrelationContext,
   PopupCorrelationStore,
@@ -6,7 +8,7 @@ import type {
 } from './tab-guardian.ts';
 
 export const SESSION_STATE_STORAGE_KEY = 'popupSessionState';
-export const SESSION_STATE_VERSION = 1;
+export const SESSION_STATE_VERSION = 2;
 export const POPUP_CONTEXT_TTL_MS = 1_500;
 export const MAX_DECISION_LOG_ENTRIES = 50;
 
@@ -15,9 +17,12 @@ export interface SessionStateStorageAreaLike {
   set(items: Record<string, unknown>): Promise<void>;
 }
 
+export type { ClickCorrelationContext };
+
 interface SessionState {
   version: typeof SESSION_STATE_VERSION;
   attempts: Record<string, PopupCorrelationContext>;
+  clicks: Record<string, ClickCorrelationContext>;
   decisions: PopupDecisionLogEntry[];
 }
 
@@ -34,6 +39,7 @@ function emptyState(): SessionState {
   return {
     version: SESSION_STATE_VERSION,
     attempts: {},
+    clicks: {},
     decisions: [],
   };
 }
@@ -112,6 +118,49 @@ function sanitizeDecisionEntry(value: unknown): PopupDecisionLogEntry | null {
   };
 }
 
+function sanitizeClickContext(value: unknown): ClickCorrelationContext | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  if (
+    !isNonNegativeInteger(value.sourceTabId) ||
+    !isFiniteTimestamp(value.timestamp) ||
+    !(value.button === 0 || value.button === 1 || value.button === 2) ||
+    !isRecord(value.modifiers) ||
+    typeof value.trusted !== 'boolean' ||
+    !isStringOrNull(value.href) ||
+    typeof value.targetBlank !== 'boolean'
+  ) {
+    return null;
+  }
+
+  const modifiers = value.modifiers;
+  if (
+    typeof modifiers.alt !== 'boolean' ||
+    typeof modifiers.ctrl !== 'boolean' ||
+    typeof modifiers.meta !== 'boolean' ||
+    typeof modifiers.shift !== 'boolean'
+  ) {
+    return null;
+  }
+
+  return {
+    sourceTabId: value.sourceTabId,
+    timestamp: value.timestamp,
+    button: value.button,
+    modifiers: {
+      alt: modifiers.alt,
+      ctrl: modifiers.ctrl,
+      meta: modifiers.meta,
+      shift: modifiers.shift,
+    } satisfies ModifierState,
+    trusted: value.trusted,
+    href: value.href?.slice(0, 2_048) ?? null,
+    targetBlank: value.targetBlank,
+  };
+}
+
 function sanitizeState(value: unknown, maxDecisionEntries: number): SessionState {
   if (!isRecord(value) || value.version !== SESSION_STATE_VERSION) {
     return emptyState();
@@ -127,6 +176,16 @@ function sanitizeState(value: unknown, maxDecisionEntries: number): SessionState
     }
   }
 
+  const clicks: Record<string, ClickCorrelationContext> = {};
+  if (isRecord(value.clicks)) {
+    for (const [key, clickValue] of Object.entries(value.clicks)) {
+      const click = sanitizeClickContext(clickValue);
+      if (click !== null && String(click.sourceTabId) === key) {
+        clicks[key] = click;
+      }
+    }
+  }
+
   const decisions = Array.isArray(value.decisions)
     ? value.decisions
         .map(sanitizeDecisionEntry)
@@ -137,6 +196,7 @@ function sanitizeState(value: unknown, maxDecisionEntries: number): SessionState
   return {
     version: SESSION_STATE_VERSION,
     attempts,
+    clicks,
     decisions,
   };
 }
@@ -238,6 +298,17 @@ export class SessionStateStore implements PopupCorrelationStore {
     });
   }
 
+  async recordClickContext(context: ClickCorrelationContext): Promise<void> {
+    const sanitized = sanitizeClickContext(context);
+    if (sanitized === null) {
+      return;
+    }
+
+    await this.mutate((state) => {
+      state.clicks[String(sanitized.sourceTabId)] = sanitized;
+    });
+  }
+
   async consumeRecentAttempt(
     sourceTabId: number,
     destinationUrl: string | null,
@@ -261,6 +332,34 @@ export class SessionStateStore implements PopupCorrelationStore {
 
       delete state.attempts[key];
       return cloneValue(attempt);
+    });
+  }
+
+  async consumeRecentClickContext(
+    sourceTabId: number,
+    destinationUrl: string | null,
+    now: number,
+  ): Promise<ClickCorrelationContext | null> {
+    return this.mutate((state) => {
+      const key = String(sourceTabId);
+      const click = state.clicks[key];
+      if (click === undefined) {
+        return null;
+      }
+
+      if (now - click.timestamp > this.contextTtlMs || now < click.timestamp) {
+        delete state.clicks[key];
+        return null;
+      }
+
+      // Require a known destination before consuming. Matching `actual === null`
+      // would burn an approvable click on an unresolved tab URL.
+      if (destinationUrl === null || !destinationsMatch(click.href, destinationUrl)) {
+        return null;
+      }
+
+      delete state.clicks[key];
+      return cloneValue(click);
     });
   }
 
@@ -293,6 +392,7 @@ export class SessionStateStore implements PopupCorrelationStore {
   async clearTab(tabId: number): Promise<void> {
     await this.mutate((state) => {
       delete state.attempts[String(tabId)];
+      delete state.clicks[String(tabId)];
     });
   }
 }

@@ -104,6 +104,7 @@ document.head.append(script);`,
         `<h1>Popup protection</h1>
 <a id="legitimate-link" href="http://player.clickshield.test:${port}/destination" target="_blank" rel="opener">Legitimate article</a>
 <a id="auth-link" href="http://auth.clickshield.test:${port}/oauth/authorize" target="_blank" rel="opener">Sign in</a>
+<a id="known-ad-link" href="http://ads.clickshield.test:${port}/ad-popup" target="_blank" rel="opener">Known ad destination</a>
 <a id="popunder-link" href="http://ads.clickshield.test:${port}/ad-popup" target="_blank" rel="opener" hidden>Hidden ad destination</a>
 <button id="trigger-popunder" type="button">Trigger pop-under</button>
 <button id="trigger-ordinary-popup" type="button">Trigger ordinary popup</button>`,

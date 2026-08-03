@@ -17,6 +17,7 @@ const validMessages: ExtensionMessage[] = [
       modifiers: { alt: false, ctrl: false, meta: false, shift: false },
       trusted: true,
       href: 'https://example.com/',
+      targetBlank: true,
     },
   },
   {

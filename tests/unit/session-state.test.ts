@@ -133,4 +133,63 @@ describe('session popup correlation state', () => {
 
     await expect(store.getDecisionLog()).resolves.toEqual([decision(1, 99)]);
   });
+
+  it('recovers a recent click-context after a service-worker restart', async () => {
+    const storage = new InMemorySessionStateStorage();
+    const firstWorker = new SessionStateStore(storage);
+    await firstWorker.recordClickContext({
+      sourceTabId: 10,
+      timestamp: 1_000,
+      button: 0,
+      modifiers: { alt: false, ctrl: false, meta: false, shift: false },
+      trusted: true,
+      href: 'https://doubleclick.net/pop',
+      targetBlank: true,
+    });
+
+    const restartedWorker = new SessionStateStore(storage);
+    await expect(
+      restartedWorker.consumeRecentClickContext(10, 'https://doubleclick.net/pop', 1_050),
+    ).resolves.toMatchObject({
+      trusted: true,
+      targetBlank: true,
+      href: 'https://doubleclick.net/pop',
+    });
+  });
+
+  it('does not approve a mismatched click destination', async () => {
+    const store = new SessionStateStore(new InMemorySessionStateStorage());
+    await store.recordClickContext({
+      sourceTabId: 10,
+      timestamp: 1_000,
+      button: 0,
+      modifiers: { alt: false, ctrl: false, meta: false, shift: false },
+      trusted: true,
+      href: 'https://doubleclick.net/pop',
+      targetBlank: true,
+    });
+
+    await expect(
+      store.consumeRecentClickContext(10, 'https://news.example/article', 1_050),
+    ).resolves.toBeNull();
+  });
+
+  it('does not consume click-context while the destination URL is still unknown', async () => {
+    const stored = {
+      sourceTabId: 10,
+      timestamp: 1_000,
+      button: 0 as const,
+      modifiers: { alt: false, ctrl: false, meta: false, shift: false },
+      trusted: true,
+      href: 'https://doubleclick.net/pop',
+      targetBlank: true,
+    };
+    const store = new SessionStateStore(new InMemorySessionStateStorage());
+    await store.recordClickContext(stored);
+
+    await expect(store.consumeRecentClickContext(10, null, 1_050)).resolves.toBeNull();
+    await expect(
+      store.consumeRecentClickContext(10, 'https://doubleclick.net/pop', 1_060),
+    ).resolves.toMatchObject(stored);
+  });
 });

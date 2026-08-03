@@ -9,6 +9,7 @@ import {
   type TabSnapshot,
   type WindowAdapter,
 } from '../../src/background/tab-guardian.ts';
+import type { ClickCorrelationContext } from '../../src/shared/native-click-context.ts';
 
 function tab(overrides: Partial<TabSnapshot> = {}): TabSnapshot {
   return {
@@ -40,6 +41,7 @@ function setup(
     activeTabId?: number | null;
     removeError?: Error;
     correlation?: PopupCorrelationContext | null;
+    clickContext?: ClickCorrelationContext | null;
   } = {},
 ) {
   const calls: string[] = [];
@@ -72,7 +74,10 @@ function setup(
     }),
   };
   const correlations: PopupCorrelationStore = {
-    consumeRecentAttempt: vi.fn(async () => overrides.correlation ?? context()),
+    consumeRecentAttempt: vi.fn(async () =>
+      overrides.correlation !== undefined ? overrides.correlation : context(),
+    ),
+    consumeRecentClickContext: vi.fn(async () => overrides.clickContext ?? null),
     appendDecision: vi.fn(async () => undefined),
   };
   const onBlocked = vi.fn(async () => undefined);
@@ -170,6 +175,50 @@ describe('tab guardian', () => {
     expect(windows.focus).not.toHaveBeenCalled();
   });
 
+  it('allows a trusted target=_blank click to a known-ad host', async () => {
+    const { guardian, tabs } = setup({
+      enforcement: 'enforce',
+      correlation: null,
+      clickContext: {
+        sourceTabId: 10,
+        timestamp: 1_000,
+        button: 0,
+        modifiers: { alt: false, ctrl: false, meta: false, shift: false },
+        trusted: true,
+        href: 'https://doubleclick.net/pop',
+        targetBlank: true,
+      },
+    });
+
+    const result = await guardian.handleCreatedTab(tab());
+
+    expect(result.decision.outcome).toBe('allow');
+    expect(result.closed).toBe(false);
+    expect(tabs.remove).not.toHaveBeenCalled();
+  });
+
+  it('still closes a synthetic known-ad target=_blank activation', async () => {
+    const { guardian, calls } = setup({
+      enforcement: 'enforce',
+      correlation: null,
+      clickContext: {
+        sourceTabId: 10,
+        timestamp: 1_000,
+        button: 0,
+        modifiers: { alt: false, ctrl: false, meta: false, shift: false },
+        trusted: false,
+        href: 'https://doubleclick.net/pop',
+        targetBlank: true,
+      },
+    });
+
+    const result = await guardian.handleCreatedTab(tab());
+
+    expect(result.decision.outcome).toBe('block');
+    expect(result.closed).toBe(true);
+    expect(calls[0]).toBe('remove:20');
+  });
+
   it('ignores tabs without an opener', async () => {
     const { guardian, tabs, correlations } = setup({ enforcement: 'enforce' });
     const createdTab = tab();
@@ -180,5 +229,6 @@ describe('tab guardian', () => {
     expect(result.decision.outcome).toBe('observe');
     expect(tabs.remove).not.toHaveBeenCalled();
     expect(correlations.consumeRecentAttempt).not.toHaveBeenCalled();
+    expect(correlations.consumeRecentClickContext).not.toHaveBeenCalled();
   });
 });

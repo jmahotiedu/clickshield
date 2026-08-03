@@ -4,6 +4,11 @@ import {
   type PopupClassificationEvidence,
 } from './popup-classifier.ts';
 import type { PopupDecision } from '../shared/decisions.ts';
+import type { ClickCorrelationContext } from '../shared/native-click-context.ts';
+import {
+  clickContextApprovesNavigation,
+  clickContextIsExplicitNewTab,
+} from '../shared/native-click-context.ts';
 import type { SiteMode } from '../shared/settings.ts';
 
 export const TAB_CORRELATION_DELAY_MS = 25;
@@ -64,6 +69,11 @@ export interface PopupCorrelationStore {
     destinationUrl: string | null,
     now: number,
   ): Promise<PopupCorrelationContext | null>;
+  consumeRecentClickContext(
+    sourceTabId: number,
+    destinationUrl: string | null,
+    now: number,
+  ): Promise<ClickCorrelationContext | null>;
   appendDecision(entry: PopupDecisionLogEntry): Promise<void>;
 }
 
@@ -191,25 +201,38 @@ export class TabGuardian {
       this.options.tabs.get(createdTab.id),
     ]);
     const destinationUrl = selectDestination(initialDestination, refreshedCreatedTab);
-    const correlation = await this.options.correlations.consumeRecentAttempt(
-      sourceTabId,
-      destinationUrl,
-      now,
-    );
-    const correlatedDestination = destinationUrl ?? correlation?.destinationUrl ?? null;
+    const [correlation, clickContext] = await Promise.all([
+      this.options.correlations.consumeRecentAttempt(sourceTabId, destinationUrl, now),
+      this.options.correlations.consumeRecentClickContext(sourceTabId, destinationUrl, now),
+    ]);
+    const correlatedDestination =
+      destinationUrl ?? correlation?.destinationUrl ?? clickContext?.href ?? null;
     const sourceUrl = sourceTab?.url ?? correlation?.sourceUrl ?? null;
     const mode = sourceUrl === null ? 'off' : await this.options.getMode(sourceUrl);
+    const clickApproves =
+      clickContext !== null &&
+      destinationUrl !== null &&
+      clickContextApprovesNavigation(clickContext);
     const evidence: PopupClassificationEvidence = {
       mode,
       sourceUrl,
       destinationUrl: correlatedDestination,
-      approvedGesture: correlation?.approvedGesture ?? false,
-      explicitNewContext: correlation?.explicitNewContext ?? false,
+      approvedGesture: correlation?.approvedGesture === true || clickApproves,
+      explicitNewContext:
+        correlation?.explicitNewContext === true ||
+        (clickContext !== null && clickContextIsExplicitNewTab(clickContext)),
       popupTokenValid: false,
-      syntheticEvent: correlation?.syntheticEvent ?? false,
+      syntheticEvent:
+        correlation?.syntheticEvent === true ||
+        (clickContext !== null && clickContext.trusted === false),
       knownAdDestination: isKnownAdDestination(correlatedDestination),
       authenticationFlow: isAuthenticationFlow(correlatedDestination),
-      creationDelayMs: correlation === null ? null : Math.max(0, now - correlation.timestamp),
+      creationDelayMs:
+        correlation === null
+          ? clickContext === null
+            ? null
+            : Math.max(0, now - clickContext.timestamp)
+          : Math.max(0, now - correlation.timestamp),
     };
     const decision = classifyPopup(evidence);
     let closed = false;
