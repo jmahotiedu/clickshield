@@ -16,6 +16,7 @@ export interface ClickContextMessage {
     modifiers: ModifierState;
     trusted: boolean;
     href: string | null;
+    targetBlank: boolean;
   };
 }
 
@@ -104,7 +105,7 @@ function isModifierState(value: unknown): value is ModifierState {
 function isClickContextPayload(value: unknown): value is ClickContextMessage['payload'] {
   if (
     !isRecord(value) ||
-    !hasOnlyKeys(value, ['timestamp', 'button', 'modifiers', 'trusted', 'href'])
+    !hasOnlyKeys(value, ['timestamp', 'button', 'modifiers', 'trusted', 'href', 'targetBlank'])
   ) {
     return false;
   }
@@ -114,7 +115,8 @@ function isClickContextPayload(value: unknown): value is ClickContextMessage['pa
     (value.button === 0 || value.button === 1 || value.button === 2) &&
     isModifierState(value.modifiers) &&
     isBoolean(value.trusted) &&
-    isStringOrNull(value.href)
+    isStringOrNull(value.href) &&
+    isBoolean(value.targetBlank)
   );
 }
 

@@ -241,6 +241,24 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
       return;
     }
 
+    if (message.type === 'click-context') {
+      const sourceTabId = getMessageTabId(sender, undefined);
+      if (sourceTabId === null) {
+        return;
+      }
+
+      void sessionStore.recordClickContext({
+        sourceTabId,
+        timestamp: message.payload.timestamp,
+        button: message.payload.button,
+        modifiers: message.payload.modifiers,
+        trusted: message.payload.trusted,
+        href: message.payload.href,
+        targetBlank: message.payload.targetBlank,
+      });
+      return;
+    }
+
     if (message.type === 'blocked-action') {
       const tabId = getMessageTabId(sender, message.payload.tabId);
       if (tabId === null) {

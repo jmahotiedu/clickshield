@@ -25,7 +25,6 @@ describe('all-frame mode channel', () => {
           href: 'https://player.example/watch',
           ancestorOrigins: origins([]),
         },
-        postMessage: () => undefined,
       }),
     ).toBe('https://player.example/watch');
   });
@@ -37,7 +36,6 @@ describe('all-frame mode channel', () => {
           href: 'https://frame.example/embed',
           ancestorOrigins: origins(['https://middle.example', 'https://player.example']),
         },
-        postMessage: () => undefined,
       }),
     ).toBe('https://player.example');
   });

@@ -16,6 +16,7 @@ import {
   clearBlockedPopupTimestamp,
   recordBlockedPopupTimestamp,
 } from '../shared/blocked-popup-signal.ts';
+import { extractAnchorClickContext } from '../shared/native-click-context.ts';
 import { hasOnlyKeys, isRecord } from '../shared/types.ts';
 
 interface ChromeRuntimeLike {
@@ -44,19 +45,28 @@ interface ChromeApiLike {
   };
 }
 
-interface WindowPostMessageLike {
+interface WindowLocationLike {
   location: {
     href: string;
     ancestorOrigins: DOMStringList;
   };
+}
+
+interface WindowPostMessageLike extends WindowLocationLike {
   postMessage(message: unknown, targetOrigin: string, transfer: Transferable[]): void;
+  addEventListener(type: string, listener: EventListener, options?: AddEventListenerOptions): void;
+  removeEventListener(
+    type: string,
+    listener: EventListener,
+    options?: boolean | EventListenerOptions,
+  ): void;
 }
 
 function isReadyMessage(value: unknown): boolean {
   return isRecord(value) && hasOnlyKeys(value, ['type']) && value.type === BRIDGE_READY_MESSAGE;
 }
 
-export function resolveTopLevelPolicyUrl(target: WindowPostMessageLike): string {
+export function resolveTopLevelPolicyUrl(target: WindowLocationLike): string {
   const { ancestorOrigins } = target.location;
   if (ancestorOrigins.length === 0) {
     return target.location.href;
@@ -93,6 +103,38 @@ async function forwardPopupAttempt(
   await Promise.all(messages.map((message) => chromeApi.runtime.sendMessage(message)));
 }
 
+function installNativeClickReporter(
+  target: WindowPostMessageLike,
+  chromeApi: ChromeApiLike,
+): () => void {
+  const handleClick: EventListener = (event) => {
+    if (!(event instanceof MouseEvent)) {
+      return;
+    }
+
+    const context = extractAnchorClickContext(event, Date.now());
+    if (context === null) {
+      return;
+    }
+
+    void chromeApi.runtime
+      .sendMessage({
+        type: 'click-context',
+        payload: context,
+      })
+      .catch(() => undefined);
+  };
+
+  const options: AddEventListenerOptions = { capture: true, passive: true };
+  target.addEventListener('click', handleClick, options);
+  target.addEventListener('auxclick', handleClick, options);
+
+  return () => {
+    target.removeEventListener('click', handleClick, { capture: true });
+    target.removeEventListener('auxclick', handleClick, { capture: true });
+  };
+}
+
 export function installAuthenticatedModeChannel(
   target: WindowPostMessageLike,
   chromeApi: ChromeApiLike,
@@ -102,6 +144,7 @@ export function installAuthenticatedModeChannel(
   let connected = false;
   let disposed = false;
   let requestVersion = 0;
+  const stopClickReporter = installNativeClickReporter(target, chromeApi);
 
   const publishEffectiveMode = async (): Promise<void> => {
     const version = ++requestVersion;
@@ -151,6 +194,7 @@ export function installAuthenticatedModeChannel(
 
   return () => {
     disposed = true;
+    stopClickReporter();
     chromeApi.storage.onChanged.removeListener(handleStorageChange);
     channel.port1.close();
   };
