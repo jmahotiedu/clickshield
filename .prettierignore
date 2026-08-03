@@ -3,3 +3,6 @@ dist/
 coverage/
 node_modules/
 .serena/
+.chrome-profile/
+.chrome-probe/
+.chrome-probe2/

@@ -72,13 +72,23 @@ export interface RecentBlockedPopupMessage {
   };
 }
 
+export interface LearnDenyHostMessage {
+  type: 'learn-deny-host';
+  payload: {
+    hostname: string;
+    tabId?: number;
+    closeTab?: boolean;
+  };
+}
+
 export type ExtensionMessage =
   | ClickContextMessage
   | PopupAttemptMessage
   | BlockedActionMessage
   | SettingsRequestMessage
   | StatisticsUpdateMessage
-  | RecentBlockedPopupMessage;
+  | RecentBlockedPopupMessage
+  | LearnDenyHostMessage;
 
 function isBoolean(value: unknown): value is boolean {
   return typeof value === 'boolean';
@@ -196,6 +206,21 @@ function isRecentBlockedPopupPayload(
   return isRecord(value) && hasOnlyKeys(value, ['timestamp']) && isFiniteNumber(value.timestamp);
 }
 
+function isLearnDenyHostPayload(value: unknown): value is LearnDenyHostMessage['payload'] {
+  if (!isRecord(value) || typeof value.hostname !== 'string') {
+    return false;
+  }
+
+  const tabIdOk = value.tabId === undefined || isNonNegativeInteger(value.tabId);
+  const closeOk = value.closeTab === undefined || isBoolean(value.closeTab);
+  if (!tabIdOk || !closeOk) {
+    return false;
+  }
+
+  const keys = Object.keys(value);
+  return keys.every((key) => key === 'hostname' || key === 'tabId' || key === 'closeTab');
+}
+
 export function isRecentBlockedPopupMessage(value: unknown): value is RecentBlockedPopupMessage {
   return (
     isRecord(value) &&
@@ -223,6 +248,8 @@ export function isExtensionMessage(value: unknown): value is ExtensionMessage {
       return isStatisticsUpdatePayload(value.payload);
     case 'recent-blocked-popup':
       return isRecentBlockedPopupPayload(value.payload);
+    case 'learn-deny-host':
+      return isLearnDenyHostPayload(value.payload);
     default:
       return false;
   }

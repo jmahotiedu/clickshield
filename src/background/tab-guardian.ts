@@ -12,6 +12,8 @@ import {
 import type { SiteMode } from '../shared/settings.ts';
 
 export const TAB_CORRELATION_DELAY_MS = 25;
+/** How long to watch an opener tab that started as about:blank / unresolved. */
+export const PENDING_POPUP_WATCH_TTL_MS = 15_000;
 
 const KNOWN_AD_HOSTS = [
   'doubleclick.net',
@@ -22,6 +24,20 @@ const KNOWN_AD_HOSTS = [
   'taboola.com',
   'outbrain.com',
   'ads.clickshield.test',
+  // Measured 2026-08-02 on cineby.tech click/pop-under traffic
+  'hai8g.com',
+  'aliexpress.com',
+  'aliexpress-media.com',
+  'best.aliexpress.com',
+  'tiktokcdn.com',
+  'zmaticoo.com',
+  'appier.net',
+  'adnxs.com',
+  'clientgear.com',
+  'ymmobi.com',
+  'mmstat.com',
+  'hyleanmerop.qpon',
+  'hellenespitous.cfd',
 ] as const;
 
 export interface TabSnapshot {
@@ -87,6 +103,7 @@ export interface TabGuardianOptions {
   enforcement?: 'observe' | 'enforce';
   blockThreshold?: number;
   onBlocked?(entry: PopupDecisionLogEntry): Promise<void>;
+  isKnownAdDestination?(destination: string | null): boolean;
 }
 
 export interface TabGuardianResult {
@@ -149,7 +166,9 @@ function selectDestination(
     return initialDestination;
   }
 
-  return refreshedCreatedTab?.pendingUrl ?? refreshedCreatedTab?.url ?? initialDestination;
+  const refreshed =
+    refreshedCreatedTab?.pendingUrl ?? refreshedCreatedTab?.url ?? initialDestination;
+  return parseUrl(refreshed) !== null ? refreshed : null;
 }
 
 function missingEvidenceDecision(): PopupDecision {
@@ -160,11 +179,21 @@ function missingEvidenceDecision(): PopupDecision {
   };
 }
 
+interface PendingPopupWatch {
+  tabId: number;
+  sourceTabId: number;
+  windowId: number;
+  createdAt: number;
+}
+
 export class TabGuardian {
   private readonly options: Required<
     Pick<TabGuardianOptions, 'delay' | 'enforcement' | 'blockThreshold' | 'onBlocked'>
   > &
-    Omit<TabGuardianOptions, 'delay' | 'enforcement' | 'blockThreshold' | 'onBlocked'>;
+    Omit<TabGuardianOptions, 'delay' | 'enforcement' | 'blockThreshold' | 'onBlocked'> & {
+      isKnownAdDestination: (destination: string | null) => boolean;
+    };
+  private readonly pendingWatches = new Map<number, PendingPopupWatch>();
 
   constructor(options: TabGuardianOptions) {
     this.options = {
@@ -173,6 +202,7 @@ export class TabGuardian {
       enforcement: options.enforcement ?? 'observe',
       blockThreshold: options.blockThreshold ?? BLOCK_CONFIDENCE_THRESHOLD,
       onBlocked: options.onBlocked ?? (async () => undefined),
+      isKnownAdDestination: options.isKnownAdDestination ?? isKnownAdDestination,
     };
   }
 
@@ -201,6 +231,74 @@ export class TabGuardian {
       this.options.tabs.get(createdTab.id),
     ]);
     const destinationUrl = selectDestination(initialDestination, refreshedCreatedTab);
+    const result = await this.classifyAndMaybeClose({
+      createdTabId: createdTab.id,
+      windowId: createdTab.windowId,
+      sourceTabId,
+      sourceTab,
+      destinationUrl,
+      now,
+    });
+
+    if (!result.closed && parseUrl(destinationUrl) === null) {
+      this.pendingWatches.set(createdTab.id, {
+        tabId: createdTab.id,
+        sourceTabId,
+        windowId: createdTab.windowId,
+        createdAt: now,
+      });
+    } else {
+      this.pendingWatches.delete(createdTab.id);
+    }
+
+    return result;
+  }
+
+  /**
+   * Re-evaluate opener tabs that started as about:blank (uBO-style onPopupUpdated).
+   * Do not block about:blank itself — wait for an http(s) URL.
+   */
+  async handleUpdatedTab(
+    tabId: number,
+    changeInfo: { url?: string },
+  ): Promise<TabGuardianResult | null> {
+    const watch = this.pendingWatches.get(tabId);
+    if (watch === undefined) {
+      return null;
+    }
+
+    const now = this.options.clock();
+    if (now - watch.createdAt > PENDING_POPUP_WATCH_TTL_MS || now < watch.createdAt) {
+      this.pendingWatches.delete(tabId);
+      return null;
+    }
+
+    const candidateUrl = changeInfo.url ?? (await this.options.tabs.get(tabId))?.url ?? null;
+    if (parseUrl(candidateUrl) === null) {
+      return null;
+    }
+
+    this.pendingWatches.delete(tabId);
+    const sourceTab = await this.options.tabs.get(watch.sourceTabId);
+    return this.classifyAndMaybeClose({
+      createdTabId: tabId,
+      windowId: watch.windowId,
+      sourceTabId: watch.sourceTabId,
+      sourceTab,
+      destinationUrl: candidateUrl,
+      now,
+    });
+  }
+
+  private async classifyAndMaybeClose(input: {
+    createdTabId: number;
+    windowId: number;
+    sourceTabId: number;
+    sourceTab: TabSnapshot | null;
+    destinationUrl: string | null;
+    now: number;
+  }): Promise<TabGuardianResult> {
+    const { createdTabId, windowId, sourceTabId, sourceTab, destinationUrl, now } = input;
     const [correlation, clickContext] = await Promise.all([
       this.options.correlations.consumeRecentAttempt(sourceTabId, destinationUrl, now),
       this.options.correlations.consumeRecentClickContext(sourceTabId, destinationUrl, now),
@@ -225,7 +323,7 @@ export class TabGuardian {
       syntheticEvent:
         correlation?.syntheticEvent === true ||
         (clickContext !== null && clickContext.trusted === false),
-      knownAdDestination: isKnownAdDestination(correlatedDestination),
+      knownAdDestination: this.options.isKnownAdDestination(correlatedDestination),
       authenticationFlow: isAuthenticationFlow(correlatedDestination),
       creationDelayMs:
         correlation === null
@@ -242,13 +340,13 @@ export class TabGuardian {
       decision.outcome === 'block' &&
       decision.confidence >= this.options.blockThreshold
     ) {
-      const activeTabId = await this.options.tabs.getActiveTabId(createdTab.windowId);
+      const activeTabId = await this.options.tabs.getActiveTabId(windowId);
 
       try {
-        await this.options.tabs.remove(createdTab.id);
+        await this.options.tabs.remove(createdTabId);
         closed = true;
 
-        if (activeTabId === createdTab.id && sourceTab !== null) {
+        if (activeTabId === createdTabId && sourceTab !== null) {
           await this.options.tabs.activate(sourceTabId);
           await this.options.windows.focus(sourceTab.windowId);
         }
@@ -258,7 +356,7 @@ export class TabGuardian {
     }
 
     const entry: PopupDecisionLogEntry = {
-      tabId: createdTab.id,
+      tabId: createdTabId,
       sourceTabId,
       timestamp: now,
       destination: sanitizeDestination(correlatedDestination),

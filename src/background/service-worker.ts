@@ -1,3 +1,4 @@
+import { LearnedDenyStore } from './learned-deny-store.ts';
 import {
   ChromeSessionStateStorage,
   SessionStateStore,
@@ -16,6 +17,7 @@ import {
 } from './statistics-store.ts';
 import {
   TabGuardian,
+  isKnownAdDestination,
   type PopupDecisionLogEntry,
   type TabAdapter,
   type TabSnapshot,
@@ -32,7 +34,13 @@ interface MessageSenderLike {
 
 interface ChromeRuntimeLike {
   onMessage: {
-    addListener(listener: (message: unknown, sender: MessageSenderLike) => boolean | void): void;
+    addListener(
+      listener: (
+        message: unknown,
+        sender: MessageSenderLike,
+        sendResponse: (response: unknown) => void,
+      ) => boolean | void,
+    ): void;
   };
 }
 
@@ -50,7 +58,9 @@ interface ChromeTabsLike {
     addListener(listener: (tab: ChromeTabLike) => void): void;
   };
   onUpdated: {
-    addListener(listener: (tabId: number, changeInfo: { status?: string }) => void): void;
+    addListener(
+      listener: (tabId: number, changeInfo: { status?: string; url?: string }) => void,
+    ): void;
   };
   onRemoved: {
     addListener(listener: (tabId: number) => void): void;
@@ -68,6 +78,19 @@ interface ChromeWindowsLike {
 
 interface ChromeDeclarativeNetRequestLike {
   setExtensionActionOptions(options: { displayActionCountAsBadgeText: boolean }): Promise<void>;
+  getDynamicRules(): Promise<Array<{ id: number }>>;
+  updateDynamicRules(options: {
+    removeRuleIds?: number[];
+    addRules?: Array<{
+      id: number;
+      priority: number;
+      action: { type: 'block' };
+      condition: {
+        urlFilter: string;
+        resourceTypes: Array<'script' | 'image' | 'sub_frame' | 'xmlhttprequest'>;
+      };
+    }>;
+  }): Promise<void>;
 }
 
 interface ChromeApiLike {
@@ -168,6 +191,23 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
   const sessionStore = new SessionStateStore(
     new ChromeSessionStateStorage(chromeApi.storage.session),
   );
+  const learnedDenyStore = new LearnedDenyStore(chromeApi.storage.local);
+
+  const syncLearnedRules = async (): Promise<void> => {
+    try {
+      await learnedDenyStore.syncDynamicRules(chromeApi.declarativeNetRequest);
+    } catch {
+      // Dynamic rule sync can fail transiently; classification still uses in-memory hosts.
+    }
+  };
+
+  const learnDestination = async (destination: string | null): Promise<void> => {
+    const result = await learnedDenyStore.learnFromDestination(destination);
+    if (result.learned) {
+      await syncLearnedRules();
+    }
+  };
+
   const guardian = new TabGuardian({
     tabs: createTabAdapter(chromeApi.tabs),
     windows: createWindowAdapter(chromeApi.windows),
@@ -175,6 +215,8 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
     getMode: (url) => policyStore.getMode(url),
     clock: () => Date.now(),
     enforcement: 'enforce',
+    isKnownAdDestination: (destination) =>
+      isKnownAdDestination(destination) || learnedDenyStore.isDeniedDestination(destination),
     onBlocked: async (entry: PopupDecisionLogEntry) => {
       await statisticsStore.record({
         tabId: entry.sourceTabId ?? entry.tabId,
@@ -186,16 +228,46 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
           reason: entry.decision.reasons.join(','),
         },
       });
+      await learnDestination(entry.destination);
     },
   });
+
+  void learnedDenyStore.load().then(() => syncLearnedRules());
 
   void chromeApi.declarativeNetRequest.setExtensionActionOptions({
     displayActionCountAsBadgeText: true,
   });
 
-  chromeApi.runtime.onMessage.addListener((message, sender) => {
+  chromeApi.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (!isExtensionMessage(message)) {
       return;
+    }
+
+    if (message.type === 'learn-deny-host') {
+      void (async () => {
+        const result = await learnedDenyStore.learnHostname(message.payload.hostname);
+        if (result.learned) {
+          await syncLearnedRules();
+        }
+
+        let closed = false;
+        if (message.payload.closeTab === true && typeof message.payload.tabId === 'number') {
+          try {
+            await chromeApi.tabs.remove(message.payload.tabId);
+            closed = true;
+          } catch {
+            closed = false;
+          }
+        }
+
+        sendResponse({
+          ok: result.hostname !== null,
+          learned: result.learned,
+          hostname: result.hostname,
+          closed,
+        });
+      })();
+      return true;
     }
 
     if (message.type === 'statistics-update') {
@@ -279,6 +351,10 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
   chromeApi.tabs.onUpdated.addListener((tabId, changeInfo) => {
     if (changeInfo.status === 'loading') {
       void statisticsStore.resetTab(tabId, Date.now());
+    }
+
+    if (typeof changeInfo.url === 'string' && changeInfo.url.length > 0) {
+      void guardian.handleUpdatedTab(tabId, { url: changeInfo.url });
     }
   });
 

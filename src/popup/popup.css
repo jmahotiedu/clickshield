@@ -34,6 +34,24 @@ label {
   min-height: 2rem;
 }
 
+button {
+  display: block;
+  width: 100%;
+  min-height: 2.25rem;
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 0.5rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 input:focus-visible,
 button:focus-visible,
 summary:focus-visible {
