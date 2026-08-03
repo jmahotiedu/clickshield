@@ -30,6 +30,9 @@ interface ChromeDeclarativeNetRequestLike {
 
 interface ChromeApiLike {
   tabs: ChromeTabsLike;
+  runtime: {
+    sendMessage(message: unknown): Promise<unknown>;
+  };
   storage: {
     sync: ChromeStorageAreaLike;
     local: ChromeStorageAreaLike;
@@ -159,15 +162,51 @@ async function initializePopup(chromeApi: ChromeApiLike): Promise<void> {
   const hiddenElements = getRequiredElement<HTMLElement>('hidden-elements');
   const strictDescription = getRequiredElement<HTMLParagraphElement>('strict-description');
   const clearDiagnostics = getRequiredElement<HTMLButtonElement>('clear-diagnostics');
+  const blockThisSite = getRequiredElement<HTMLButtonElement>('block-this-site');
   const status = getRequiredElement<HTMLParagraphElement>('status');
 
   currentSite.textContent = viewModel.hostname;
   controls.disabled = !viewModel.supported;
+  blockThisSite.disabled = !viewModel.supported || viewModel.hostname.length === 0;
   blockedRequests.textContent = String(viewModel.blockedRequests);
   hiddenElements.textContent = String(viewModel.hiddenElements);
   strictDescription.textContent = viewModel.strictDescription;
   renderMode(viewModel.mode);
   renderDiagnostics(diagnosticsViewModel);
+
+  blockThisSite.addEventListener('click', async () => {
+    if (!viewModel.supported || viewModel.hostname.length === 0) {
+      return;
+    }
+
+    blockThisSite.disabled = true;
+    status.textContent = 'Adding to deny list…';
+
+    try {
+      const response = (await chromeApi.runtime.sendMessage({
+        type: 'learn-deny-host',
+        payload: {
+          hostname: viewModel.hostname,
+          tabId: activeTab?.id,
+          closeTab: true,
+        },
+      })) as
+        { ok?: boolean; learned?: boolean; hostname?: string | null; closed?: boolean } | undefined;
+
+      if (response?.ok !== true || typeof response.hostname !== 'string') {
+        status.textContent = 'Could not block this site.';
+        blockThisSite.disabled = false;
+        return;
+      }
+
+      status.textContent = response.learned
+        ? `Denied ${response.hostname}${response.closed ? ' and closed this tab.' : '.'}`
+        : `${response.hostname} was already denied${response.closed ? '; closed this tab.' : '.'}`;
+    } catch {
+      status.textContent = 'Could not block this site.';
+      blockThisSite.disabled = false;
+    }
+  });
 
   controls.addEventListener('change', async (event) => {
     const target = event.target;

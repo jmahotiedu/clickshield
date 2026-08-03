@@ -102,9 +102,13 @@ export function classifyPopup(evidence: PopupClassificationEvidence): PopupDecis
   } else if (sourceOrigin !== destinationOrigin) {
     reasons.push('cross-site-destination');
     confidence += 10;
+    // Strict: ungated cross-site tabs are treated as pop-unders even when the
+    // host is not yet on the deny list (cineby / unlimitedadblocker style).
+    reasons.push('ungated-cross-site-popup');
+    confidence += 50;
   }
 
-  if (evidence.knownAdDestination && confidence >= BLOCK_CONFIDENCE_THRESHOLD) {
+  if (confidence >= BLOCK_CONFIDENCE_THRESHOLD) {
     return createDecision('block', confidence, reasons);
   }
 

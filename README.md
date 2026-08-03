@@ -12,7 +12,7 @@ ClickShield stores a mode for each hostname:
 - **Standard**: applies packaged declarative network rules and conservative cosmetic selectors.
 - **Strict**: includes Standard behavior and adds popup correlation, high-confidence pop-under closure, and reversible transparent-overlay mitigation.
 
-More-specific subdomain settings override inherited parent-domain settings. The default for ordinary HTTP and HTTPS pages is Standard.
+More-specific subdomain settings override inherited parent-domain settings. The default for ordinary HTTP and HTTPS pages is Strict.
 
 ## Current capabilities
 

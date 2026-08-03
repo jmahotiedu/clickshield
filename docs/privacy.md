@@ -22,6 +22,10 @@ These records use tab IDs, timestamps, categories, reasons, and counts. They are
 
 Network counts are deliberately limited by the production permission model. ClickShield does not claim exact request-by-request production logging when Chrome does not expose that information under the selected permissions.
 
+### Local learned deny hosts
+
+`chrome.storage.local` may also contain `learnedDenyHosts`: hostnames added when Strict closes a known advertising tab, or when the user clicks **Block this site** in the popup. These hosts stay on-device, sync into Chrome dynamic network rules for this profile, and are never uploaded to a ClickShield server. The list is capped (500 hosts).
+
 ### Session-only popup correlation
 
 `chrome.storage.session` contains versioned popup-correlation state for the current browser session:

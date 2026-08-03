@@ -5,5 +5,8 @@ output/playwright/
 playwright-report/
 test-results/
 .serena/
+.chrome-profile/
+.chrome-probe/
+.chrome-probe2/
 *.log
 .DS_Store

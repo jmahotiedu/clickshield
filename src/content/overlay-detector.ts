@@ -55,6 +55,14 @@ const SUSPICIOUS_IFRAME_HOSTS = [
   'adsrvr.org',
   'taboola.com',
   'outbrain.com',
+  'hai8g.com',
+  'aliexpress.com',
+  'aliexpress-media.com',
+  'tiktokcdn.com',
+  'zmaticoo.com',
+  'appier.net',
+  'adnxs.com',
+  'clientgear.com',
 ] as const;
 
 const LEGITIMATE_SEMANTIC_HINTS = new Set([

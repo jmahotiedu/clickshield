@@ -69,12 +69,20 @@ const validMessages: ExtensionMessage[] = [
       timestamp: 1_700_000_123,
     },
   },
+  {
+    type: 'learn-deny-host',
+    payload: {
+      hostname: 'hai8g.com',
+      tabId: 9,
+      closeTab: true,
+    },
+  },
 ];
 
 describe('site-mode contracts', () => {
-  it('defines the three supported site modes and Standard as the default', () => {
+  it('defines the three supported site modes and Strict as the default', () => {
     expect(SITE_MODES).toEqual(['off', 'standard', 'strict']);
-    expect(DEFAULT_SITE_MODE).toBe('standard');
+    expect(DEFAULT_SITE_MODE).toBe('strict');
     expect(SITE_MODES.every(isSiteMode)).toBe(true);
     expect(isSiteMode('aggressive')).toBe(false);
   });

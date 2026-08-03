@@ -139,12 +139,12 @@ describe('tab guardian', () => {
     });
     const observed = setup({
       enforcement: 'enforce',
-      correlation: context({ destinationUrl: 'https://news.example/article' }),
+      correlation: context({ destinationUrl: 'https://player.example/article' }),
     });
 
     expect((await allowed.guardian.handleCreatedTab(tab())).decision.outcome).toBe('allow');
     expect(
-      (await observed.guardian.handleCreatedTab(tab({ url: 'https://news.example/article' })))
+      (await observed.guardian.handleCreatedTab(tab({ url: 'https://player.example/article' })))
         .decision.outcome,
     ).toBe('observe');
     expect(allowed.tabs.remove).not.toHaveBeenCalled();
@@ -216,6 +216,78 @@ describe('tab guardian', () => {
 
     expect(result.decision.outcome).toBe('block');
     expect(result.closed).toBe(true);
+    expect(calls[0]).toBe('remove:20');
+  });
+
+  it('reclassifies an about:blank opener tab once it navigates to a known-ad URL', async () => {
+    const tabsById = new Map<number, TabSnapshot>([
+      [
+        10,
+        {
+          id: 10,
+          windowId: 3,
+          url: 'https://player.example/watch',
+          active: false,
+        },
+      ],
+      [
+        20,
+        {
+          id: 20,
+          windowId: 3,
+          openerTabId: 10,
+          url: 'about:blank',
+          active: true,
+        },
+      ],
+    ]);
+    const calls: string[] = [];
+    const tabs: TabAdapter = {
+      get: vi.fn(async (tabId) => tabsById.get(tabId) ?? null),
+      getActiveTabId: vi.fn(async () => 20),
+      remove: vi.fn(async (tabId) => {
+        calls.push(`remove:${tabId}`);
+      }),
+      activate: vi.fn(async (tabId) => {
+        calls.push(`activate:${tabId}`);
+      }),
+    };
+    const windows: WindowAdapter = {
+      focus: vi.fn(async (windowId) => {
+        calls.push(`focus:${windowId}`);
+      }),
+    };
+    const correlations: PopupCorrelationStore = {
+      consumeRecentAttempt: vi.fn(async () => null),
+      consumeRecentClickContext: vi.fn(async () => null),
+      appendDecision: vi.fn(async () => undefined),
+    };
+    const guardian = new TabGuardian({
+      tabs,
+      windows,
+      correlations,
+      getMode: async () => 'strict',
+      clock: () => 1_050,
+      delay: async () => undefined,
+      enforcement: 'enforce',
+    });
+
+    const first = await guardian.handleCreatedTab(tabsById.get(20)!);
+    expect(first.closed).toBe(false);
+    expect(tabs.remove).not.toHaveBeenCalled();
+
+    tabsById.set(20, {
+      id: 20,
+      windowId: 3,
+      openerTabId: 10,
+      url: 'https://hai8g.com/afu.php',
+      active: true,
+    });
+
+    const second = await guardian.handleUpdatedTab(20, { url: 'https://hai8g.com/afu.php' });
+
+    expect(second?.decision.outcome).toBe('block');
+    expect(second?.closed).toBe(true);
     expect(calls[0]).toBe('remove:20');
   });
 
