@@ -139,12 +139,12 @@ describe('tab guardian', () => {
     });
     const observed = setup({
       enforcement: 'enforce',
-      correlation: context({ destinationUrl: 'https://news.example/article' }),
+      correlation: context({ destinationUrl: 'https://player.example/article' }),
     });
 
     expect((await allowed.guardian.handleCreatedTab(tab())).decision.outcome).toBe('allow');
     expect(
-      (await observed.guardian.handleCreatedTab(tab({ url: 'https://news.example/article' })))
+      (await observed.guardian.handleCreatedTab(tab({ url: 'https://player.example/article' })))
         .decision.outcome,
     ).toBe('observe');
     expect(allowed.tabs.remove).not.toHaveBeenCalled();

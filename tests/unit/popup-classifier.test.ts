@@ -75,7 +75,24 @@ describe('popup classifier evidence scoring', () => {
     });
   });
 
-  it('observes a cross-site destination when that is the only signal', () => {
+  it('blocks an ungated cross-site destination without needing a known-ad host', () => {
+    expect(
+      classifyPopup(
+        evidence({
+          destinationUrl: 'https://unlimitedadblocker.net/unlimited.php',
+        }),
+      ),
+    ).toMatchObject({
+      outcome: 'block',
+      reasons: expect.arrayContaining([
+        'cross-site-destination',
+        'ungated-cross-site-popup',
+        'no-approved-user-gesture',
+      ]),
+    });
+  });
+
+  it('still allows approved gestures to cross-site destinations', () => {
     expect(
       classifyPopup(
         evidence({
@@ -86,17 +103,6 @@ describe('popup classifier evidence scoring', () => {
     ).toMatchObject({
       outcome: 'allow',
       reasons: ['approved-user-gesture'],
-    });
-
-    expect(
-      classifyPopup(
-        evidence({
-          destinationUrl: 'https://different.example/article',
-        }),
-      ),
-    ).toMatchObject({
-      outcome: 'observe',
-      reasons: expect.arrayContaining(['cross-site-destination']),
     });
   });
 
@@ -146,12 +152,12 @@ describe('popup classifier invariants', () => {
     expect(classifyPopup(input).outcome).not.toBe('block');
   });
 
-  it('never blocks solely because a destination is cross-origin', () => {
+  it('does not treat same-site ungated navigation as a cross-site popup block', () => {
     const decision = classifyPopup(
-      evidence({ destinationUrl: 'https://unrelated.example/legitimate' }),
+      evidence({ destinationUrl: 'https://player.example/legitimate' }),
     );
 
     expect(decision.outcome).toBe('observe');
-    expect(decision.reasons).toContain('cross-site-destination');
+    expect(decision.reasons).not.toContain('ungated-cross-site-popup');
   });
 });

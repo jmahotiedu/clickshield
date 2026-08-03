@@ -38,6 +38,10 @@ const KNOWN_AD_HOSTS = [
   'mmstat.com',
   'hyleanmerop.qpon',
   'hellenespitous.cfd',
+  'unlimitedadblocker.net',
+  'oldvent.com',
+  'propellerads.com',
+  'tradedoubler.com',
 ] as const;
 
 export interface TabSnapshot {

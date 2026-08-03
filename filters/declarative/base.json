@@ -187,5 +187,32 @@
       "urlFilter": "||hellenespitous.cfd^",
       "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
     }
+  },
+  {
+    "id": 22,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||unlimitedadblocker.net^",
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    "id": 23,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||oldvent.com^",
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+    }
+  },
+  {
+    "id": 24,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "||propellerads.com^",
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest"]
+    }
   }
 ]

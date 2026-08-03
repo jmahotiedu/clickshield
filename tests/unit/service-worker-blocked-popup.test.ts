@@ -61,6 +61,13 @@ function createChromeHarness() {
     },
     declarativeNetRequest: {
       async setExtensionActionOptions(): Promise<void> {},
+      async getDynamicRules(): Promise<Array<{ id: number }>> {
+        return [];
+      },
+      async updateDynamicRules(): Promise<void> {},
+    },
+    webNavigation: {
+      onCreatedNavigationTarget: { addListener(): void {} },
     },
   };
 

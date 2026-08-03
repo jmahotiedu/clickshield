@@ -13,6 +13,7 @@ export const POPUP_DECISION_REASONS = [
   'synthetic-event',
   'no-approved-user-gesture',
   'cross-site-destination',
+  'ungated-cross-site-popup',
   'known-ad-destination',
   'suspicious-creation-timing',
   'missing-evidence',

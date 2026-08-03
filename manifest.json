@@ -11,7 +11,7 @@
   "action": {
     "default_popup": "popup/popup.html"
   },
-  "permissions": ["storage", "activeTab", "declarativeNetRequest"],
+  "permissions": ["storage", "activeTab", "tabs", "webNavigation", "declarativeNetRequest"],
   "host_permissions": ["<all_urls>"],
   "content_scripts": [
     {

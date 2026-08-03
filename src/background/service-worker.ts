@@ -93,6 +93,14 @@ interface ChromeDeclarativeNetRequestLike {
   }): Promise<void>;
 }
 
+interface ChromeWebNavigationLike {
+  onCreatedNavigationTarget: {
+    addListener(
+      listener: (details: { tabId: number; sourceTabId: number; url: string }) => void,
+    ): void;
+  };
+}
+
 interface ChromeApiLike {
   runtime: ChromeRuntimeLike;
   tabs: ChromeTabsLike;
@@ -103,6 +111,7 @@ interface ChromeApiLike {
     session: SessionStateStorageAreaLike;
   };
   declarativeNetRequest: ChromeDeclarativeNetRequestLike;
+  webNavigation: ChromeWebNavigationLike;
 }
 
 function getMessageTabId(
@@ -341,10 +350,62 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
     }
   });
 
+  // Pop-unders often omit tab.openerTabId (noopener). webNavigation still reports the source.
+  const navigationSources = new Map<number, { sourceTabId: number; url: string; seenAt: number }>();
+  const evaluateTimers = new Map<number, ReturnType<typeof setTimeout>>();
+
+  const evaluateNewTab = (tabId: number): void => {
+    const existing = evaluateTimers.get(tabId);
+    if (existing !== undefined) {
+      clearTimeout(existing);
+    }
+
+    evaluateTimers.set(
+      tabId,
+      setTimeout(() => {
+        evaluateTimers.delete(tabId);
+        void (async () => {
+          try {
+            const tab = await chromeApi.tabs.get(tabId);
+            const snapshot = toTabSnapshot(tab);
+            if (snapshot === null) {
+              return;
+            }
+
+            const hint = navigationSources.get(tabId);
+            if (snapshot.openerTabId === undefined && hint !== undefined) {
+              snapshot.openerTabId = hint.sourceTabId;
+            }
+            if (
+              (snapshot.url === undefined || snapshot.url === 'about:blank') &&
+              hint !== undefined &&
+              hint.url.length > 0 &&
+              hint.url !== 'about:blank'
+            ) {
+              snapshot.pendingUrl = hint.url;
+            }
+
+            await guardian.handleCreatedTab(snapshot);
+          } catch {
+            // Tab may already be gone.
+          }
+        })();
+      }, 120),
+    );
+  };
+
+  chromeApi.webNavigation.onCreatedNavigationTarget.addListener((details) => {
+    navigationSources.set(details.tabId, {
+      sourceTabId: details.sourceTabId,
+      url: details.url,
+      seenAt: Date.now(),
+    });
+    evaluateNewTab(details.tabId);
+  });
+
   chromeApi.tabs.onCreated.addListener((tab) => {
-    const snapshot = toTabSnapshot(tab);
-    if (snapshot !== null) {
-      void guardian.handleCreatedTab(snapshot);
+    if (typeof tab.id === 'number') {
+      evaluateNewTab(tab.id);
     }
   });
 
@@ -354,11 +415,21 @@ export function installServiceWorker(chromeApi: ChromeApiLike): void {
     }
 
     if (typeof changeInfo.url === 'string' && changeInfo.url.length > 0) {
+      const hint = navigationSources.get(tabId);
+      if (hint !== undefined) {
+        navigationSources.set(tabId, { ...hint, url: changeInfo.url });
+      }
       void guardian.handleUpdatedTab(tabId, { url: changeInfo.url });
     }
   });
 
   chromeApi.tabs.onRemoved.addListener((tabId) => {
+    navigationSources.delete(tabId);
+    const timer = evaluateTimers.get(tabId);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      evaluateTimers.delete(tabId);
+    }
     void Promise.all([statisticsStore.removeTab(tabId), sessionStore.clearTab(tabId)]);
   });
 }

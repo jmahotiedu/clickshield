@@ -28,6 +28,7 @@ const REASON_LABELS: Record<PopupDecisionReason, string> = {
   'synthetic-event': 'Synthetic event signal',
   'no-approved-user-gesture': 'No recent approved click',
   'cross-site-destination': 'Different destination site',
+  'ungated-cross-site-popup': 'Ungated cross-site popup',
   'known-ad-destination': 'Known advertising destination',
   'suspicious-creation-timing': 'Created immediately after page activity',
   'missing-evidence': 'Not enough evidence',
